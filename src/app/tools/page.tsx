@@ -7,6 +7,8 @@ import {
   FileText,
   Flame,
   Gauge,
+  Globe,
+  Link as LinkIcon,
   ListChecks,
   Lock,
   ServerCog,
@@ -105,6 +107,38 @@ const tools = [
     description:
       "Generate + validate llms.txt — the emerging standard for telling AI crawlers what your site is about.",
     accent: "rose",
+  },
+  {
+    href: "/tools/domain-overview",
+    icon: Globe,
+    title: "Domain overview",
+    description:
+      "Every signal we can check ourselves — HTTPS, security headers, schema, on-page basics, indexed-pages estimate. Plus links to free external checkers for DA/DR.",
+    accent: "violet",
+  },
+  {
+    href: "/tools/link-checker",
+    icon: LinkIcon,
+    title: "Link analyzer",
+    description:
+      "Paste any URL → every <a> link classified internal/external + dofollow/nofollow, with anchor text frequency. Critical pre-publish check.",
+    accent: "cyan",
+  },
+  {
+    href: "/tools/keyword-difficulty",
+    icon: Gauge,
+    title: "Keyword difficulty",
+    description:
+      "Heuristic 0-100 score from real SERP signals — big-brand presence, SERP features, title competitiveness. AI summary if your AI key is configured.",
+    accent: "amber",
+  },
+  {
+    href: "/tools/external",
+    icon: Globe,
+    title: "External SEO toolkit",
+    description:
+      "Curated list of free / free-tier external tools for what we can't check ourselves — Moz DA, Ahrefs backlinks, SSL Labs, Wayback Machine, ICANN whois.",
+    accent: "cyan",
   },
   {
     href: "/tools/reddit-research",

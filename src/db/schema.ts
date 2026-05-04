@@ -104,6 +104,10 @@ export const tasks = sqliteTable("tasks", {
   recurringInterval: text("recurring_interval", {
     enum: ["daily", "weekly", "monthly", "quarterly"],
   }),
+  /** Estimated time to complete in minutes — for capacity planning. */
+  estimatedMinutes: integer("estimated_minutes"),
+  /** Actual logged minutes — accumulated by the timer / manual entry. */
+  actualMinutes: integer("actual_minutes"),
   ...timestamps,
 });
 

@@ -4,8 +4,84 @@ import {
   Lightbulb,
   ShieldAlert,
   CheckCircle2,
+  Link2,
 } from "lucide-react";
 import { PageHeader } from "@/components/shell/page-header";
+
+const linkBuildingPlays = [
+  {
+    name: "Digital PR / data studies",
+    summary:
+      "Publish original research or surveys with surprising findings. Pitch journalists who cover the topic. The most reliable way to earn .gov / .edu / news-tier links in 2026.",
+    effort: "high",
+    payoff: "high",
+  },
+  {
+    name: "Broken link building",
+    summary:
+      "Find broken pages on competitor / niche sites that linked to a topic you cover. Email the webmaster with a working replacement URL. Conversion rates 5-15%.",
+    effort: "medium",
+    payoff: "medium",
+  },
+  {
+    name: "Resource-page outreach",
+    summary:
+      "Search for `inurl:resources` + your niche. If your content is a better fit than what they list, ask. Best for genuinely useful tools / guides.",
+    effort: "medium",
+    payoff: "medium",
+  },
+  {
+    name: "HARO / Qwoted / Help A B2B Writer",
+    summary:
+      "Reply to journalist queries with quotable expertise. Earned media that lands in Forbes, Inc., trade pubs. Daily 15-min habit.",
+    effort: "low",
+    payoff: "high",
+  },
+  {
+    name: "Niche edits (link insertions)",
+    summary:
+      "Find existing relevant articles on authoritative sites and pitch a section update where your link adds value. Doesn't require new content from them.",
+    effort: "medium",
+    payoff: "medium",
+  },
+  {
+    name: "Guest posting (selectively)",
+    summary:
+      "Only on sites with real readers and editorial standards. PBN-style guest posting is a 2010s tactic — Google's spam updates devalue it.",
+    effort: "high",
+    payoff: "low",
+  },
+  {
+    name: "Reclaim unlinked mentions",
+    summary:
+      "Set up Google Alerts / monitoring for your brand. When someone mentions you without linking, ask. ~30% conversion if the mention is positive.",
+    effort: "low",
+    payoff: "medium",
+  },
+  {
+    name: "Build linkable assets",
+    summary:
+      "Free tools, calculators, definitive guides, statistics roundups. People link because the asset itself solves their problem — passive earned links over years.",
+    effort: "high",
+    payoff: "very high",
+  },
+  {
+    name: "Internal linking audit (compounds)",
+    summary:
+      "Not external link-building, but doubles the impact of every backlink you earn. Send authority from your strongest pages to weaker ones every month.",
+    effort: "low",
+    payoff: "high",
+  },
+];
+
+const linkRulesOf2026 = [
+  "Disavow file is mostly obsolete — Google's spam team handles bad links automatically. Only disavow after a manual penalty.",
+  "PBN networks are detectable and devalued. Stop wasting budget on private link networks.",
+  "Reciprocal links (you link to me, I link to you) at small scale are fine. At large scale they're a footprint.",
+  "Anchor text diversity matters more than keyword anchor density. Aim for 70% branded / generic, 30% keyword-rich.",
+  "DR / DA are correlation metrics, not causation. A genuine link from a relevant DR-30 site can outperform a paid DR-70 link.",
+  "Sponsored content + nofollow / sponsored rel attribute is fine. Hidden paid placement is risky.",
+];
 
 const glossary = [
   {
@@ -153,6 +229,58 @@ export default function LearnPage() {
             </li>
           ))}
         </ul>
+      </section>
+
+      {/* Link building guide */}
+      <section className="relative overflow-hidden rounded-2xl border border-white/5 bg-card/40 backdrop-blur-md">
+        <div className="pointer-events-none absolute -right-12 -top-12 size-40 rounded-full bg-violet-500/15 blur-3xl" />
+        <header className="relative border-b border-white/5 px-5 py-4">
+          <h2 className="flex items-center gap-2 text-base font-semibold">
+            <Link2 className="size-4 text-violet-300" />
+            Link building in 2026
+          </h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            What still works, ranked by realistic effort vs payoff. None of
+            this is buy-50-PBN-links cheap. Real links require real value.
+          </p>
+        </header>
+
+        <div className="relative px-5 py-4">
+          <div className="mb-4 rounded-xl bg-rose-500/[0.05] p-3 ring-1 ring-inset ring-rose-500/20">
+            <div className="text-xs font-semibold text-rose-300">
+              Hard rules of 2026
+            </div>
+            <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+              {linkRulesOf2026.map((r, i) => (
+                <li key={i}>• {r}</li>
+              ))}
+            </ul>
+          </div>
+
+          <ul className="relative space-y-2">
+            {linkBuildingPlays.map((p) => (
+              <li
+                key={p.name}
+                className="rounded-xl bg-white/[0.02] p-3 ring-1 ring-inset ring-white/[0.04]"
+              >
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <h3 className="text-sm font-semibold">{p.name}</h3>
+                  <div className="flex gap-2 text-[10px] text-muted-foreground">
+                    <span className="rounded bg-white/5 px-1.5 py-0.5">
+                      effort: {p.effort}
+                    </span>
+                    <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-emerald-300">
+                      payoff: {p.payoff}
+                    </span>
+                  </div>
+                </div>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  {p.summary}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
       </section>
 
       {/* SEO folklore */}

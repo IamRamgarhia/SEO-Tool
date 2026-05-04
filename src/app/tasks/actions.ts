@@ -160,6 +160,50 @@ export async function setTaskRecurrence(
   revalidatePath("/tasks");
 }
 
+export async function logTaskTime(input: {
+  taskId: number;
+  /** Minutes to add. Negative subtracts. */
+  minutes: number;
+}): Promise<{ ok: true; total: number } | { ok: false; error: string }> {
+  if (!Number.isFinite(input.taskId) || input.taskId <= 0) {
+    return { ok: false, error: "Invalid task" };
+  }
+  if (!Number.isFinite(input.minutes) || input.minutes === 0) {
+    return { ok: false, error: "Enter minutes" };
+  }
+  const [t] = await db
+    .select({ id: tasks.id, actualMinutes: tasks.actualMinutes })
+    .from(tasks)
+    .where(eq(tasks.id, input.taskId))
+    .limit(1);
+  if (!t) return { ok: false, error: "Task not found" };
+  const newTotal = Math.max(0, (t.actualMinutes ?? 0) + Math.round(input.minutes));
+  await db
+    .update(tasks)
+    .set({ actualMinutes: newTotal, updatedAt: new Date() })
+    .where(eq(tasks.id, input.taskId));
+  revalidatePath("/tasks");
+  revalidatePath("/capacity");
+  return { ok: true, total: newTotal };
+}
+
+export async function setTaskEstimate(
+  taskId: number,
+  estimatedMinutes: number | null,
+): Promise<void> {
+  if (!Number.isFinite(taskId) || taskId <= 0) return;
+  const v =
+    estimatedMinutes === null || !Number.isFinite(estimatedMinutes)
+      ? null
+      : Math.max(0, Math.round(estimatedMinutes));
+  await db
+    .update(tasks)
+    .set({ estimatedMinutes: v, updatedAt: new Date() })
+    .where(eq(tasks.id, taskId));
+  revalidatePath("/tasks");
+  revalidatePath("/capacity");
+}
+
 // Bulk operations
 import { inArray } from "drizzle-orm";
 
