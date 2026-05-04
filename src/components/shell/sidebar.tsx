@@ -88,6 +88,9 @@ const groups: { title: string; items: Section[] }[] = [
       { href: "/content-decay", label: "Content decay", icon: TrendingDown },
       { href: "/outreach", label: "Outreach", icon: Send },
       { href: "/competitors", label: "Competitors", icon: Network },
+      { href: "/competitors/playbook", label: "Competitor playbook", icon: Network },
+      { href: "/brand-monitor", label: "Brand monitor", icon: Network },
+      { href: "/local-grid", label: "Local heatmap", icon: MapPin },
       { href: "/compare", label: "Site compare", icon: GitCompare },
       { href: "/monitor", label: "Page monitor", icon: Activity },
       { href: "/automations", label: "Automations", icon: Workflow },
@@ -98,6 +101,8 @@ const groups: { title: string; items: Section[] }[] = [
   {
     title: "Quick tools",
     items: [
+      { href: "/links", label: "Smart links", icon: Link2 },
+      { href: "/tools/link-graph", label: "Link graph", icon: Network },
       { href: "/tools/health-check", label: "Health check", icon: Stethoscope },
       { href: "/tools/reddit-research", label: "Reddit research", icon: Flame },
       { href: "/news", label: "SEO news", icon: Newspaper },

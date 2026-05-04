@@ -761,6 +761,80 @@ export const gbpPlaybookCompletions = sqliteTable("gbp_playbook_completions", {
   occurrence: text("occurrence"),
 });
 
+export const shortLinks = sqliteTable("short_links", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  clientId: integer("client_id").references(() => clients.id, {
+    onDelete: "cascade",
+  }),
+  slug: text("slug").notNull().unique(),
+  destination: text("destination").notNull(),
+  label: text("label"),
+  utmSource: text("utm_source"),
+  utmMedium: text("utm_medium"),
+  utmCampaign: text("utm_campaign"),
+  utmTerm: text("utm_term"),
+  utmContent: text("utm_content"),
+  clickCount: integer("click_count").notNull().default(0),
+  lastClickAt: integer("last_click_at", { mode: "timestamp" }),
+  ...timestamps,
+});
+
+export const shortLinkClicks = sqliteTable("short_link_clicks", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  shortLinkId: integer("short_link_id")
+    .notNull()
+    .references(() => shortLinks.id, { onDelete: "cascade" }),
+  userAgent: text("user_agent"),
+  referer: text("referer"),
+  countryHint: text("country_hint"),
+  clickedAt: integer("clicked_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export const brandMentions = sqliteTable("brand_mentions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  clientId: integer("client_id")
+    .notNull()
+    .references(() => clients.id, { onDelete: "cascade" }),
+  source: text("source", {
+    enum: ["reddit", "hackernews", "bluesky", "mastodon", "rss"],
+  }).notNull(),
+  externalId: text("external_id").notNull(),
+  url: text("url").notNull(),
+  author: text("author"),
+  title: text("title"),
+  excerpt: text("excerpt"),
+  sentiment: integer("sentiment").notNull().default(0),
+  linksToClient: integer("links_to_client", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  publishedAt: integer("published_at", { mode: "timestamp" }),
+  capturedAt: integer("captured_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export const localGridChecks = sqliteTable("local_grid_checks", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  clientId: integer("client_id")
+    .notNull()
+    .references(() => clients.id, { onDelete: "cascade" }),
+  query: text("query").notNull(),
+  centerLat: integer("center_lat").notNull(),
+  centerLng: integer("center_lng").notNull(),
+  gridSize: integer("grid_size").notNull().default(5),
+  spacingM: integer("spacing_m").notNull().default(1500),
+  cells: text("cells", { mode: "json" }).$type<
+    { lat: number; lng: number; position: number | null }[]
+  >(),
+  avgPosition: integer("avg_position"),
+  inPackPct: integer("in_pack_pct"),
+  ranAt: integer("ran_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
 export const aiFeedback = sqliteTable("ai_feedback", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   /** What kind of AI output this critiques. */
@@ -880,6 +954,13 @@ export type BotLogUpload = typeof botLogUploads.$inferSelect;
 export type NewBotLogUpload = typeof botLogUploads.$inferInsert;
 export type GbpPlaybookCompletion = typeof gbpPlaybookCompletions.$inferSelect;
 export type NewGbpPlaybookCompletion = typeof gbpPlaybookCompletions.$inferInsert;
+export type ShortLink = typeof shortLinks.$inferSelect;
+export type NewShortLink = typeof shortLinks.$inferInsert;
+export type ShortLinkClick = typeof shortLinkClicks.$inferSelect;
+export type BrandMention = typeof brandMentions.$inferSelect;
+export type NewBrandMention = typeof brandMentions.$inferInsert;
+export type LocalGridCheck = typeof localGridChecks.$inferSelect;
+export type NewLocalGridCheck = typeof localGridChecks.$inferInsert;
 export type AiFeedback = typeof aiFeedback.$inferSelect;
 export type NewAiFeedback = typeof aiFeedback.$inferInsert;
 export type AiPreference = typeof aiPreferences.$inferSelect;

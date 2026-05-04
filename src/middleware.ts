@@ -19,6 +19,9 @@ const PUBLIC_PATHS = [
   "/icon-192.png",
   "/icon-512.png",
   "/favicon.ico",
+  // Short-link redirector — must be public so external visitors clicking
+  // the link reach the destination without hitting the auth gate.
+  "/r",
 ];
 
 function isPublicPath(pathname: string): boolean {

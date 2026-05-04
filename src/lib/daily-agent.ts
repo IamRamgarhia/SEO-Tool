@@ -49,6 +49,7 @@ export async function tickDailyAgent(): Promise<DailyAgentReport | null> {
   await runStep(steps, "rss.refresh", refreshNewsFeeds);
   await runStep(steps, "ai.suggestions", generateAiSuggestionsForAll);
   await runStep(steps, "ai.distill_preferences", distillRecentFeedback);
+  await runStep(steps, "brand.monitor", runBrandMonitorForAll);
   if (startedAt.getUTCDay() === 1) {
     // Mondays only
     await runStep(steps, "rank.weekly_sweep", weeklyRankSweep);
@@ -149,6 +150,16 @@ async function generateAiSuggestionsForAll(): Promise<string> {
     return "agent module unavailable";
   }
   return `ran agent for ${count} clients`;
+}
+
+async function runBrandMonitorForAll(): Promise<string> {
+  try {
+    const { monitorAllClients } = await import("./brand-monitor");
+    const r = await monitorAllClients();
+    return `${r.clients} clients scanned, ${r.added} new mentions`;
+  } catch (err) {
+    throw new Error((err as Error).message ?? "brand monitor failed");
+  }
 }
 
 async function distillRecentFeedback(): Promise<string> {
