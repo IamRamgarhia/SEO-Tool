@@ -96,6 +96,32 @@ export async function AgencyWeekInReview() {
     .orderBy(desc(clients.updatedAt))
     .limit(5);
 
+  // AI Monday-morning narrative: 1-2 short sentences synthesising the
+  // numbers above. Stays silent when there's no AI provider configured.
+  let aiSummary: string | null = null;
+  try {
+    const { callAI } = await import("@/lib/ai-call");
+    aiSummary = await callAI({
+      system:
+        "You write 1-2 sentence Monday-morning briefings for an SEO agency owner. Use the numbers exactly. Lead with the most important signal. No fluff, no headers, no preamble — just the briefing.",
+      user: `Last 7 days across the portfolio (${clientCount} clients):
+- Tasks completed: ${tasksDone}
+- Links built: ${linksBuilt}
+- Short-link clicks: ${clicksRecent}
+- Brand mentions: ${mentionsRecent} (${positiveMentions} positive)
+- Page changes: ${pageChangesRecent}
+- Active clients (had completions): ${recentActiveClients.length}/${clientCount}
+
+Write the Monday-morning briefing. Highlight any anomalies (zero activity = silent clients; high mentions but few completions = leverage opportunity). 1-2 sentences max.`,
+      maxTokens: 200,
+      temperature: 0.4,
+      timeoutMs: 12_000,
+      feature: "general",
+    });
+  } catch {
+    aiSummary = null;
+  }
+
   return (
     <section className="glass-apple relative overflow-hidden rounded-2xl">
       <header className="border-b border-white/[0.06] px-5 py-4">
@@ -103,6 +129,11 @@ export async function AgencyWeekInReview() {
           <Briefcase className="size-4 text-violet-300" />
           Agency week in review
         </h2>
+        {aiSummary && (
+          <p className="mt-2 rounded-md bg-violet-500/10 px-3 py-2 text-sm text-violet-100/90 ring-1 ring-inset ring-violet-500/20">
+            {aiSummary}
+          </p>
+        )}
         <p className="mt-0.5 text-xs text-muted-foreground">
           Aggregate activity across all {clientCount} client
           {clientCount === 1 ? "" : "s"} over the last 7 days.

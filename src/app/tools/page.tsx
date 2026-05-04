@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import {
+  Activity,
   Code2,
   Eye,
   FileText,
@@ -12,12 +13,16 @@ import {
   Link2,
   ListChecks,
   Lock,
+  Map,
+  Network,
   ScanText,
   ServerCog,
   ShieldCheck,
   Sparkles,
   Stethoscope,
+  Video,
   Wrench,
+  Zap,
 } from "lucide-react";
 import { PageHeader } from "@/components/shell/page-header";
 
@@ -149,6 +154,54 @@ const tools = [
     description:
       "Crawl your site, find pages that mention your target keyword without linking to your target URL. The fastest way to compound on-site authority.",
     accent: "violet",
+  },
+  {
+    href: "/tools/link-graph",
+    icon: Network,
+    title: "Internal-link analyser",
+    description:
+      "Crawl + build link graph. Surfaces orphan pages and proposes top-3 source pages for each via TF-IDF cosine similarity. CSV / JSON export.",
+    accent: "violet",
+  },
+  {
+    href: "/tools/sitemap",
+    icon: Map,
+    title: "Sitemap generator",
+    description:
+      "Crawl any site, generate sitemap.xml + plain-text URL list + human-readable HTML index. Respects robots.txt by default.",
+    accent: "cyan",
+  },
+  {
+    href: "/tools/indexnow",
+    icon: Zap,
+    title: "IndexNow submitter",
+    description:
+      "Push fresh URLs to Bing, Yandex, Naver, Seznam in seconds. Free, no API key — one verification file per host.",
+    accent: "cyan",
+  },
+  {
+    href: "/tools/bing",
+    icon: Globe,
+    title: "Bing Webmaster Tools",
+    description:
+      "Free Bing organic data — top queries, top pages, crawl issues, URL submission. Add a free Bing API key once.",
+    accent: "cyan",
+  },
+  {
+    href: "/tools/crux",
+    icon: Activity,
+    title: "Real-user CWV (CrUX)",
+    description:
+      "Real Chrome user data over the last 28 days. Same data Google uses for page-experience ranking. Free with a PageSpeed key.",
+    accent: "emerald",
+  },
+  {
+    href: "/tools/youtube",
+    icon: Video,
+    title: "YouTube keyword research",
+    description:
+      "Real video data — view counts, channels, recurring tag phrases. Free YouTube Data API tier (100 searches a day).",
+    accent: "rose",
   },
   {
     href: "/tools/plagiarism",

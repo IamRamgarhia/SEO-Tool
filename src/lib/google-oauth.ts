@@ -390,6 +390,70 @@ export async function listGa4Properties(): Promise<Ga4Property[]> {
 }
 
 /**
+ * Per-landing-page organic conversions + revenue. Same dimensions as
+ * the page-level GSC report — joining the two by URL gives us "clicks
+ * vs conversions" per landing page.
+ */
+export async function fetchGa4OrganicByLandingPage(opts: {
+  propertyId: string;
+  startDate: string;
+  endDate: string;
+  rowLimit?: number;
+  clientIdScope?: number;
+}): Promise<
+  {
+    landingPage: string;
+    sessions: number;
+    conversions: number;
+    revenue: number;
+  }[]
+> {
+  const token = await getAccessToken(opts.clientIdScope);
+  const res = await fetch(
+    `https://analyticsdata.googleapis.com/v1beta/properties/${opts.propertyId}:runReport`,
+    {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        dateRanges: [{ startDate: opts.startDate, endDate: opts.endDate }],
+        dimensions: [{ name: "landingPagePlusQueryString" }],
+        metrics: [
+          { name: "sessions" },
+          { name: "conversions" },
+          { name: "totalRevenue" },
+        ],
+        dimensionFilter: {
+          filter: {
+            fieldName: "sessionDefaultChannelGroup",
+            stringFilter: { matchType: "EXACT", value: "Organic Search" },
+          },
+        },
+        limit: String(opts.rowLimit ?? 250),
+      }),
+    },
+  );
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`GA4 landing-page report failed: ${res.status} ${body}`);
+  }
+  const data = (await res.json()) as {
+    rows?: Array<{
+      dimensionValues: { value: string }[];
+      metricValues: { value: string }[];
+    }>;
+  };
+  return (data.rows ?? []).map((r) => ({
+    landingPage: r.dimensionValues[0]?.value ?? "",
+    sessions: Number(r.metricValues[0]?.value ?? 0),
+    conversions: Number(r.metricValues[1]?.value ?? 0),
+    revenue: Number(r.metricValues[2]?.value ?? 0),
+  }));
+}
+
+/**
  * Pull total GA4 conversions + revenue attributed to organic search over
  * a date range. Returns zeros if the GA4 property exists but has no
  * conversion events configured. Throws if GA4 isn't connected.

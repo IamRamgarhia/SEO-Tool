@@ -55,6 +55,11 @@ export const clients = sqliteTable("clients", {
   // ga4PropertyId: numeric e.g. "123456789"
   gscProperty: text("gsc_property"),
   ga4PropertyId: text("ga4_property_id"),
+  // WordPress bridge credentials — set when the SEO Tool Bridge plugin
+  // is installed on the client's WordPress site. Enables one-click
+  // application of SEO fixes (titles, meta, schema, alt text).
+  wpEndpoint: text("wp_endpoint"),
+  wpKey: text("wp_key"),
   // Per-client Google OAuth tokens — overrides workspace-wide credentials
   // when set. Lets agencies connect each client's OWN Google account
   // separately (when the client doesn't share access with the agency).
@@ -815,6 +820,26 @@ export const brandMentions = sqliteTable("brand_mentions", {
     .default(sql`(unixepoch())`),
 });
 
+export const localGridSchedules = sqliteTable("local_grid_schedules", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  clientId: integer("client_id")
+    .notNull()
+    .references(() => clients.id, { onDelete: "cascade" }),
+  query: text("query").notNull(),
+  centerLat: integer("center_lat").notNull(),
+  centerLng: integer("center_lng").notNull(),
+  gridSize: integer("grid_size").notNull().default(5),
+  spacingM: integer("spacing_m").notNull().default(1500),
+  cadence: text("cadence", {
+    enum: ["weekly", "monthly"],
+  })
+    .notNull()
+    .default("weekly"),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  lastRanAt: integer("last_ran_at", { mode: "timestamp" }),
+  ...timestamps,
+});
+
 export const localGridChecks = sqliteTable("local_grid_checks", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   clientId: integer("client_id")
@@ -1012,6 +1037,8 @@ export type BrandMention = typeof brandMentions.$inferSelect;
 export type NewBrandMention = typeof brandMentions.$inferInsert;
 export type LocalGridCheck = typeof localGridChecks.$inferSelect;
 export type NewLocalGridCheck = typeof localGridChecks.$inferInsert;
+export type LocalGridSchedule = typeof localGridSchedules.$inferSelect;
+export type NewLocalGridSchedule = typeof localGridSchedules.$inferInsert;
 export type ClientMetricSnapshot = typeof clientMetricSnapshots.$inferSelect;
 export type NewClientMetricSnapshot = typeof clientMetricSnapshots.$inferInsert;
 export type CompetitorSnapshot = typeof competitorSnapshots.$inferSelect;

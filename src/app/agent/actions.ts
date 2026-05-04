@@ -90,6 +90,8 @@ export async function suggestionToTask(suggestionId: number) {
     whyItMatters: s.rationale ?? undefined,
     priority: s.priority,
     status: "todo" as const,
+    source: "agent_suggestion",
+    sourceRef: `suggestion-${s.id}`,
   });
 
   await db

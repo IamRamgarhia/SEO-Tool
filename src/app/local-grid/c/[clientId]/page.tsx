@@ -9,6 +9,9 @@ import { PageHeader } from "@/components/shell/page-header";
 import { ClientToolHeader } from "@/components/shell/client-tool-grid";
 import { GridForm } from "./grid-form";
 import { GridHistory } from "./grid-history";
+import { ScheduleList } from "./schedule-list";
+import { listGridSchedules } from "../../actions";
+import { ScheduleForm } from "./schedule-form";
 
 export default async function PerClientLocalGridPage({
   params,
@@ -31,12 +34,15 @@ export default async function PerClientLocalGridPage({
     .from(clients)
     .orderBy(asc(clients.name));
 
-  const recentGrids = await db
-    .select()
-    .from(localGridChecks)
-    .where(eq(localGridChecks.clientId, clientId))
-    .orderBy(desc(localGridChecks.ranAt))
-    .limit(10);
+  const [recentGrids, schedules] = await Promise.all([
+    db
+      .select()
+      .from(localGridChecks)
+      .where(eq(localGridChecks.clientId, clientId))
+      .orderBy(desc(localGridChecks.ranAt))
+      .limit(10),
+    listGridSchedules(clientId),
+  ]);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -61,6 +67,22 @@ export default async function PerClientLocalGridPage({
       />
 
       <GridForm clientId={client.id} />
+
+      <ScheduleForm clientId={client.id} />
+
+      <ScheduleList
+        schedules={schedules.map((s) => ({
+          id: s.id,
+          query: s.query,
+          cadence: s.cadence,
+          enabled: s.enabled,
+          lastRanAt: s.lastRanAt,
+          centerLat: s.centerLat,
+          centerLng: s.centerLng,
+          gridSize: s.gridSize,
+          spacingM: s.spacingM,
+        }))}
+      />
 
       {recentGrids.length > 0 && (
         <GridHistory

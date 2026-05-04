@@ -55,6 +55,7 @@ export async function tickDailyAgent(): Promise<DailyAgentReport | null> {
   await runStep(steps, "mentions.digest", sendMentionDigestStep);
   await runStep(steps, "competitors.monitor", monitorCompetitorsStep);
   await runStep(steps, "links.lost_check", lostLinkCheckStep);
+  await runStep(steps, "local_grid.scheduled", runScheduledLocalGridsStep);
   if (startedAt.getUTCDay() === 1) {
     // Mondays only
     await runStep(steps, "rank.weekly_sweep", weeklyRankSweep);
@@ -174,6 +175,16 @@ async function monitorCompetitorsStep(): Promise<string> {
     return `${r.checked} competitors checked, ${r.changes} changes`;
   } catch (err) {
     throw new Error((err as Error).message ?? "monitor failed");
+  }
+}
+
+async function runScheduledLocalGridsStep(): Promise<string> {
+  try {
+    const { runDueLocalGridSchedules } = await import("./local-grid-runner");
+    const r = await runDueLocalGridSchedules();
+    return `${r.ran}/${r.scheduled} grid schedules ran`;
+  } catch (err) {
+    throw new Error((err as Error).message ?? "grid scheduler failed");
   }
 }
 
