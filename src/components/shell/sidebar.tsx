@@ -58,6 +58,7 @@ const groups: { title: string; items: Section[] }[] = [
       { href: "/grader", label: "Instant audit", icon: Sparkles },
       { href: "/import", label: "Import screenshot", icon: ScanText },
       { href: "/capture", label: "Universal capture", icon: Magnet },
+      { href: "/csv-import", label: "CSV import", icon: FileDown },
       { href: "/clients", label: "Clients", icon: Users },
       { href: "/capacity", label: "Capacity", icon: Gauge },
       { href: "/agent", label: "AI agent", icon: Bot },

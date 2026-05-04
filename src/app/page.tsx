@@ -20,6 +20,7 @@ import Link from "next/link";
 import { PortfolioTrafficPanel } from "./portfolio-traffic-panel";
 import { PortfolioQuickWinsPanel } from "./portfolio-quick-wins-panel";
 import { MorningBriefing } from "./morning-briefing";
+import { WelcomeTour } from "./welcome-tour";
 import { tickScheduleRunner } from "@/lib/report-mailer";
 
 const priorityVariant: Record<
@@ -233,10 +234,15 @@ export default async function DashboardPage() {
         />
       </div>
 
+      {/* WELCOME TOUR — guides first-run users through the workflow */}
+      {isFresh && <WelcomeTour />}
+
       {/* MORNING BRIEFING — what changed in last 24h across portfolio */}
-      <Suspense fallback={null}>
-        <MorningBriefing />
-      </Suspense>
+      {!isFresh && (
+        <Suspense fallback={null}>
+          <MorningBriefing />
+        </Suspense>
+      )}
 
       {/* REAL GOOGLE DATA — only renders if any client has Google linked */}
       <Suspense fallback={null}>

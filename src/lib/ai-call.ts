@@ -1,4 +1,5 @@
 import { getActiveProvider, getApiKey, getOllamaUrl } from "./api-keys";
+import { getSetting } from "./settings-store";
 
 export type AiCallOptions = {
   system: string;
@@ -7,6 +8,11 @@ export type AiCallOptions = {
   temperature?: number;
   /** Per-call timeout in ms. Defaults to 60s — blog writing can be slow. */
   timeoutMs?: number;
+  /**
+   * Bypass credit-saver mode. Use only for features where terse output is
+   * useless (e.g. full blog drafts that need to be long by definition).
+   */
+  ignoreCreditSaver?: boolean;
 };
 
 /**
@@ -15,20 +21,45 @@ export type AiCallOptions = {
  *
  * One implementation here means every feature (exec summaries, blog writing,
  * future agents) gets the same provider routing for free.
+ *
+ * Credit-saver mode (toggled in Settings → AI):
+ *   - prepends "Be terse — 2-4 sentences" to the system prompt
+ *   - caps maxTokens at 500
+ *   - lowers temperature for deterministic answers (cheaper rerolls)
+ *   - features that need length (blog writer) opt out via ignoreCreditSaver
  */
 export async function callAI(opts: AiCallOptions): Promise<string | null> {
   const active = await getActiveProvider();
   if (!active) return null;
 
-  const max = opts.maxTokens ?? 2000;
-  const temperature = opts.temperature ?? 0.6;
+  let system = opts.system;
+  let max = opts.maxTokens ?? 2000;
+  let temperature = opts.temperature ?? 0.6;
   const timeoutMs = opts.timeoutMs ?? 60_000;
+
+  if (!opts.ignoreCreditSaver) {
+    const saver = await getSetting<boolean>("ai.credit_saver.enabled");
+    if (saver) {
+      system = `Credit-saver mode: keep your answer to 2-4 short sentences. Skip pleasantries, headers, and preamble. Lead with the most useful information first.\n\n${system}`;
+      max = Math.min(max, 500);
+      temperature = Math.min(temperature, 0.3);
+    }
+  }
+
+  // Re-pack — downstream provider helpers spread this onto their request
+  const packed: AiCallOptions = {
+    system,
+    user: opts.user,
+    maxTokens: max,
+    temperature,
+    timeoutMs,
+  };
 
   try {
     if (active === "gemini") {
       const k = await getApiKey("gemini");
       if (!k) return null;
-      return await callGemini({ apiKey: k, ...opts, max, temperature, timeoutMs });
+      return await callGemini({ apiKey: k, ...packed, max, temperature, timeoutMs });
     }
     if (active === "groq") {
       const k = await getApiKey("groq");
@@ -46,7 +77,7 @@ export async function callAI(opts: AiCallOptions): Promise<string | null> {
     if (active === "anthropic") {
       const k = await getApiKey("anthropic");
       if (!k) return null;
-      return await callAnthropic({ apiKey: k, ...opts, max, temperature, timeoutMs });
+      return await callAnthropic({ apiKey: k, ...packed, max, temperature, timeoutMs });
     }
     if (active === "openai") {
       const k = await getApiKey("openai");
@@ -90,7 +121,7 @@ export async function callAI(opts: AiCallOptions): Promise<string | null> {
     }
     if (active === "ollama") {
       const url = await getOllamaUrl();
-      return await callOllama({ url, ...opts, max, temperature, timeoutMs });
+      return await callOllama({ url, ...packed, max, temperature, timeoutMs });
     }
   } catch {
     return null;

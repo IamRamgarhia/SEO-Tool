@@ -32,6 +32,7 @@ import { WebhookForm } from "./webhook-form";
 import { BrandForm } from "./brand-form";
 import { ApiKeysSection } from "./api-keys-section";
 import { ActiveProviderCard } from "./active-provider-card";
+import { CreditSaverForm } from "./credit-saver-form";
 
 export default async function SettingsPage() {
   const [{ value: clientCount }] = await db
@@ -57,6 +58,9 @@ export default async function SettingsPage() {
   const { byId: configuredKeys } = await configuredProviders();
   const ollamaUrl = await getOllamaUrl();
   const activeProvider = await getActiveProvider();
+  const creditSaverOn = Boolean(
+    await getSetting<boolean>("ai.credit_saver.enabled"),
+  );
   const googleStatus = await getGoogleConnectionStatus();
 
   // SMTP config — read individually so we can pass an "initial" object to the
@@ -302,6 +306,7 @@ export default async function SettingsPage() {
             active={activeProvider}
             configured={configuredKeys}
           />
+          <CreditSaverForm initial={creditSaverOn} />
           <ApiKeysSection
             configured={configuredKeys}
             ollamaUrl={ollamaUrl}

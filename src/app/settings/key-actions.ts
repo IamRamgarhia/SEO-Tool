@@ -62,3 +62,8 @@ export async function setActiveProvider(
   revalidatePath("/ai-visibility");
   revalidatePath("/", "layout");
 }
+
+export async function setCreditSaverEnabled(enabled: boolean): Promise<void> {
+  await setSetting("ai.credit_saver.enabled", enabled);
+  revalidatePath("/settings");
+}
