@@ -19,6 +19,7 @@ import { ScoreGauge } from "@/components/ui/score-gauge";
 import Link from "next/link";
 import { PortfolioTrafficPanel } from "./portfolio-traffic-panel";
 import { PortfolioQuickWinsPanel } from "./portfolio-quick-wins-panel";
+import { MorningBriefing } from "./morning-briefing";
 import { tickScheduleRunner } from "@/lib/report-mailer";
 
 const priorityVariant: Record<
@@ -231,6 +232,11 @@ export default async function DashboardPage() {
           spark={scoreTimeline.length > 1 ? scoreTimeline : undefined}
         />
       </div>
+
+      {/* MORNING BRIEFING — what changed in last 24h across portfolio */}
+      <Suspense fallback={null}>
+        <MorningBriefing />
+      </Suspense>
 
       {/* REAL GOOGLE DATA — only renders if any client has Google linked */}
       <Suspense fallback={null}>

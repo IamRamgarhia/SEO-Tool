@@ -93,6 +93,103 @@ export async function getGscQuickWins(opts: {
   }
 }
 
+export type CannibalizationGroup = {
+  query: string;
+  totalClicks: number;
+  totalImpressions: number;
+  pages: {
+    page: string;
+    clicks: number;
+    impressions: number;
+    ctr: number;
+    position: number;
+  }[];
+  /** Higher = more harmful overlap (multiple pages competing for the same intent). */
+  severity: "high" | "medium" | "low";
+};
+
+/**
+ * Finds queries where multiple internal URLs are competing in the SERP.
+ * Two pages ranking for the same query split clicks and confuse Google about
+ * the canonical answer page — the fix is to consolidate or differentiate.
+ *
+ * Severity:
+ *   high   — 3+ pages, OR 2 pages both within the top 20
+ *   medium — 2 pages, one in top 20 and one beyond
+ *   low    — 2 pages, both beyond position 20 (unlikely to harm meaningfully)
+ */
+export async function detectKeywordCannibalization(opts: {
+  siteUrl: string;
+  days?: number;
+  minImpressions?: number;
+  limit?: number;
+}): Promise<CannibalizationGroup[]> {
+  const days = opts.days ?? 28;
+  const minImpressions = opts.minImpressions ?? 30;
+  try {
+    const rows = await fetchGscPerformance({
+      siteUrl: opts.siteUrl,
+      startDate: daysAgo(days + 2),
+      endDate: daysAgo(2),
+      dimensions: ["query", "page"],
+      rowLimit: 5000,
+    });
+
+    const grouped = new Map<
+      string,
+      CannibalizationGroup["pages"]
+    >();
+    for (const r of rows) {
+      const query = r.keys[0] ?? "";
+      const page = r.keys[1] ?? "";
+      if (!query || !page) continue;
+      if (r.impressions < minImpressions) continue;
+      const list = grouped.get(query) ?? [];
+      list.push({
+        page,
+        clicks: r.clicks,
+        impressions: r.impressions,
+        ctr: r.ctr,
+        position: r.position,
+      });
+      grouped.set(query, list);
+    }
+
+    const groups: CannibalizationGroup[] = [];
+    for (const [query, pages] of grouped.entries()) {
+      if (pages.length < 2) continue;
+      pages.sort((a, b) => a.position - b.position);
+      const totalClicks = pages.reduce((s, p) => s + p.clicks, 0);
+      const totalImpressions = pages.reduce(
+        (s, p) => s + p.impressions,
+        0,
+      );
+      const top20 = pages.filter((p) => p.position <= 20).length;
+      let severity: CannibalizationGroup["severity"] = "low";
+      if (pages.length >= 3 || top20 >= 2) severity = "high";
+      else if (top20 >= 1) severity = "medium";
+      groups.push({
+        query,
+        totalClicks,
+        totalImpressions,
+        pages,
+        severity,
+      });
+    }
+
+    const sevRank = { high: 0, medium: 1, low: 2 };
+    groups.sort(
+      (a, b) =>
+        sevRank[a.severity] - sevRank[b.severity] ||
+        b.totalImpressions - a.totalImpressions,
+    );
+
+    return groups.slice(0, opts.limit ?? 50);
+  } catch {
+    return [];
+  }
+}
+
 export type Ga4DailyTraffic = {
   date: string;
   sessions: number;

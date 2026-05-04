@@ -277,3 +277,405 @@ export function getNicheTemplates(
   if (!niche) return [];
   return nicheTemplates[niche as Niche] ?? [];
 }
+
+/**
+ * Universal task playbooks. Each playbook is a named bundle of tasks that
+ * applies to any client regardless of niche or tech stack. These cover the
+ * common day-to-day / weekly / monthly SEO routines that every site needs.
+ *
+ * Apply via the /tasks/templates page — clones every task into the chosen
+ * client with optional staggered due dates.
+ */
+export type Playbook = {
+  id: string;
+  name: string;
+  description: string;
+  category: "weekly" | "monthly" | "quarterly" | "launch" | "recovery";
+  /** Estimated total hours to complete the playbook. */
+  estimatedHours: number;
+  /** Tasks in suggested order. The first task gets dueDate today + offsetDays. */
+  tasks: (NicheTaskTemplate & { offsetDays?: number })[];
+};
+
+export const playbooks: Playbook[] = [
+  {
+    id: "weekly-health-check",
+    name: "Weekly health check",
+    description:
+      "What every SEO does first thing Monday — catch ranking drops, indexing issues, broken pages before clients notice.",
+    category: "weekly",
+    estimatedHours: 1,
+    tasks: [
+      {
+        title: "Review GSC for sudden traffic drops",
+        description:
+          "Open Search Console → Performance. Compare last 7 days vs prior 7. Flag any query/page with >25% click drop and investigate.",
+        whyItMatters:
+          "Catching drops early lets you correlate against algorithm updates, your own deploys, or content changes — and recover before the loss compounds.",
+        priority: "high",
+        offsetDays: 0,
+      },
+      {
+        title: "Check Coverage / Pages report for new errors",
+        description:
+          "GSC → Indexing → Pages. Look for any new errors (404, redirect issues, soft-404, server errors).",
+        whyItMatters:
+          "Indexing errors block pages from earning traffic. Most are easy fixes if caught the same week they appear.",
+        priority: "high",
+        offsetDays: 0,
+      },
+      {
+        title: "Re-check rank tracker for tracked keywords",
+        description:
+          "Look at rank changes >5 positions on tracked keywords. Verify any drops aren't temporary SERP volatility.",
+        whyItMatters:
+          "Tracked keywords are the ones tied to revenue. Big drops here demand same-week investigation, not month-end discovery.",
+        priority: "medium",
+        offsetDays: 0,
+      },
+      {
+        title: "Run a fresh site audit on key pages",
+        description:
+          "Audit the homepage + top 3 traffic pages. Confirm titles, metas, schema, and CWV haven't regressed.",
+        whyItMatters:
+          "Deploys and CMS edits silently break SEO. Weekly audits catch regressions before they hurt rankings.",
+        priority: "medium",
+        offsetDays: 1,
+      },
+    ],
+  },
+  {
+    id: "monthly-content-refresh",
+    name: "Monthly content refresh",
+    description:
+      "Find decaying pages, update them, and re-promote. The single highest-ROI ongoing SEO activity for content sites.",
+    category: "monthly",
+    estimatedHours: 6,
+    tasks: [
+      {
+        title: "Identify top 5 decaying pages from GSC",
+        description:
+          "Use the Content decay tool. Pick pages with meaningful prior traffic and >20% click drop.",
+        whyItMatters:
+          "Refreshing existing top performers is 5–10× faster than ranking new content, and Google rewards freshness signals on previously trusted pages.",
+        priority: "high",
+        offsetDays: 0,
+      },
+      {
+        title: "Audit each decaying page against current SERP",
+        description:
+          "Search the target keyword. Note what the top 3 results cover that yours doesn't. Check for outdated stats, year mentions, and screenshots.",
+        whyItMatters:
+          "SERPs evolve. The page that ranked 18 months ago may now miss key subtopics, schema, or freshness signals competitors have added.",
+        priority: "high",
+        offsetDays: 1,
+      },
+      {
+        title: "Rewrite intro + add 1–2 new sections per page",
+        description:
+          "Update the intro with fresh framing, current year, and updated stats. Add new sections covering subtopics from your SERP audit.",
+        whyItMatters:
+          "Substantial content updates (not just changing a date) trigger Google's freshness re-evaluation and typically lift rankings within 2–4 weeks.",
+        priority: "high",
+        offsetDays: 3,
+      },
+      {
+        title: "Update internal links pointing into refreshed pages",
+        description:
+          "Find pages already linking to the refreshed page. Update anchor text to match the new focus, add 2–3 fresh internal links from related posts.",
+        whyItMatters:
+          "Internal link signals reinforce the refresh — Google re-crawls linked pages faster, and updated anchor text helps with semantic relevance.",
+        priority: "medium",
+        offsetDays: 5,
+      },
+      {
+        title: "Re-submit refreshed URLs in GSC",
+        description:
+          "GSC → URL Inspection → Request Indexing for each refreshed URL. Speeds up the re-crawl from days to hours.",
+        whyItMatters:
+          "Manual re-indexing accelerates Google's evaluation of your changes. The faster Google sees the new content, the faster you see ranking lift.",
+        priority: "medium",
+        offsetDays: 7,
+      },
+    ],
+  },
+  {
+    id: "monthly-technical-audit",
+    name: "Monthly technical audit",
+    description:
+      "The technical SEO health pass — broken links, redirects, schema, CWV, indexability. Catch debt before it accumulates.",
+    category: "monthly",
+    estimatedHours: 4,
+    tasks: [
+      {
+        title: "Run a full broken-link scan",
+        description:
+          "Crawl the site. Fix any internal 404s, update outbound dead links, redirect orphaned pages.",
+        whyItMatters:
+          "Broken links waste crawl budget, frustrate users, and suggest poor maintenance to Google. They accumulate quietly with every CMS edit.",
+        priority: "high",
+        offsetDays: 0,
+      },
+      {
+        title: "Audit redirect chains (>1 hop)",
+        description:
+          "Find any URL that redirects more than once before resolving. Replace each with a single direct redirect to the final URL.",
+        whyItMatters:
+          "Each redirect hop wastes crawl budget and adds latency. Long chains can cause Google to abandon the crawl entirely.",
+        priority: "medium",
+        offsetDays: 1,
+      },
+      {
+        title: "Validate schema on key page types",
+        description:
+          "Test homepage, product/service template, blog template, and contact page through Google's Rich Results Test.",
+        whyItMatters:
+          "Schema breaks silently with theme/CMS updates. Broken schema means losing rich results — directly impacting SERP CTR.",
+        priority: "medium",
+        offsetDays: 2,
+      },
+      {
+        title: "Review Core Web Vitals trend",
+        description:
+          "Open PageSpeed Insights for the homepage + 2 traffic pages. Confirm LCP < 2.5s, INP < 200ms, CLS < 0.1.",
+        whyItMatters:
+          "CWV is a confirmed ranking factor. Regressions usually come from new third-party scripts, image swaps, or theme updates.",
+        priority: "medium",
+        offsetDays: 3,
+      },
+      {
+        title: "Check robots.txt + sitemap.xml health",
+        description:
+          "Validate both files. Confirm sitemap submits cleanly in GSC and contains only canonical URLs returning 200.",
+        whyItMatters:
+          "A broken sitemap or wrong robots.txt rule can deindex large parts of a site overnight. Worth a 5-minute check.",
+        priority: "low",
+        offsetDays: 4,
+      },
+    ],
+  },
+  {
+    id: "monthly-competitor-watch",
+    name: "Monthly competitor watch",
+    description:
+      "What your top 3 competitors did this month — content, backlinks, ranking gains. Steal what works.",
+    category: "monthly",
+    estimatedHours: 3,
+    tasks: [
+      {
+        title: "List new content competitors published this month",
+        description:
+          "Check 3 competitors' /blog or sitemaps. Note new posts, target keywords, format, length.",
+        whyItMatters:
+          "Knowing what they're investing in tells you which keywords are heating up in your niche before they show in your rank tracker.",
+        priority: "medium",
+        offsetDays: 0,
+      },
+      {
+        title: "Identify keywords competitors gained on this month",
+        description:
+          "Use SERP overlap tooling — find queries where they now rank top 10 and you don't.",
+        whyItMatters:
+          "Their wins are your roadmap. New rankings = a topic Google is currently rewarding in your niche.",
+        priority: "medium",
+        offsetDays: 1,
+      },
+      {
+        title: "Check competitors for new high-quality backlinks",
+        description:
+          "Use GSC + Ahrefs Webmaster Tools (free). Note any new domain-rating-30+ links. Investigate the linking page — can you earn the same?",
+        whyItMatters:
+          "Reverse-engineering link sources is the highest-yield link-building research. Sites that link to one competitor often link to others.",
+        priority: "low",
+        offsetDays: 2,
+      },
+      {
+        title: "Note any major page changes on competitor key pages",
+        description:
+          "Diff their homepage + top traffic pages from last month. Look for new sections, schema changes, repositioning.",
+        whyItMatters:
+          "Big competitor edits often correlate with their own ranking movements — a leading indicator for what's about to work in the niche.",
+        priority: "low",
+        offsetDays: 3,
+      },
+    ],
+  },
+  {
+    id: "new-client-onboarding",
+    name: "New client onboarding",
+    description:
+      "First 14 days with a new client — get GSC/GA4 connected, baseline measurements, quick wins, and trust built.",
+    category: "launch",
+    estimatedHours: 8,
+    tasks: [
+      {
+        title: "Connect Google Search Console",
+        description:
+          "Verify the property if not already, then connect via OAuth. Confirm 16 months of historical data is visible.",
+        whyItMatters:
+          "GSC is your single source of truth for what's actually ranking. Without it, every recommendation is guesswork.",
+        priority: "high",
+        offsetDays: 0,
+      },
+      {
+        title: "Connect Google Analytics 4",
+        description:
+          "Get GA4 access (Read & Analyze role). Verify organic traffic data appears and matches GSC clicks within ~10%.",
+        whyItMatters:
+          "GA4 ties traffic to outcomes (conversions, revenue). Without it, you can't show the client what their SEO investment actually returned.",
+        priority: "high",
+        offsetDays: 0,
+      },
+      {
+        title: "Run baseline full-site audit",
+        description:
+          "Crawl every URL. Capture initial health score, issue counts by severity, top 10 issues. Save as the baseline snapshot.",
+        whyItMatters:
+          "The baseline is your before-photo. Every monthly report compares against it — without it you have no measurable progress to show.",
+        priority: "high",
+        offsetDays: 1,
+      },
+      {
+        title: "Identify and fix top 3 quick-win issues",
+        description:
+          "From the audit, pick the 3 issues with highest impact-to-effort ratio. Fix them in week 1 to show immediate movement.",
+        whyItMatters:
+          "Visible progress in the first 2 weeks is what builds client trust. A single ranking improvement they can see makes them advocates internally.",
+        priority: "high",
+        offsetDays: 2,
+      },
+      {
+        title: "Build initial keyword tracking list (20–50 keywords)",
+        description:
+          "Start with their existing top GSC queries + 5–10 strategic targets they want to rank for. Don't track aspirational long-tail yet.",
+        whyItMatters:
+          "Tracking the wrong keywords (or too many) creates noise. Start narrow with what's already working + immediate goals.",
+        priority: "medium",
+        offsetDays: 4,
+      },
+      {
+        title: "Document goals + first 90-day strategy",
+        description:
+          "Write a one-page strategy doc: client's 3 goals, your 3 priorities, first 30/60/90-day milestones. Share for sign-off.",
+        whyItMatters:
+          "Aligning on goals up front prevents 'why did you do X' conversations later. The signed-off plan is your shield + roadmap.",
+        priority: "medium",
+        offsetDays: 7,
+      },
+    ],
+  },
+  {
+    id: "traffic-drop-recovery",
+    name: "Traffic drop recovery",
+    description:
+      "Run when GSC shows a sudden drop. Diagnose the cause systematically before guessing — most drops have one of five causes.",
+    category: "recovery",
+    estimatedHours: 4,
+    tasks: [
+      {
+        title: "Confirm the drop is real (not a tracking issue)",
+        description:
+          "Check GSC + GA4 + your rank tracker independently. Confirm the drop appears in all three.",
+        whyItMatters:
+          "Tracking glitches account for ~15% of perceived 'drops'. Eliminate this first before spending hours diagnosing a non-issue.",
+        priority: "high",
+        offsetDays: 0,
+      },
+      {
+        title: "Check if a Google algorithm update overlaps the drop date",
+        description:
+          "Look at Google's Search Status Dashboard + algorithm-update tracker. Note if any update finished within ±3 days of the drop.",
+        whyItMatters:
+          "Algorithm updates are the #1 cause of unexplained drops. Knowing 'core update' vs 'spam update' vs 'helpful content' shapes the entire recovery strategy.",
+        priority: "high",
+        offsetDays: 0,
+      },
+      {
+        title: "Identify which pages and queries dropped most",
+        description:
+          "GSC → Performance → compare 28 days before vs 28 days after. Sort by clicks lost. Focus on the top 10.",
+        whyItMatters:
+          "Drops are rarely site-wide. Finding the concentrated pages tells you whether it's content, technical, or SERP-feature related.",
+        priority: "high",
+        offsetDays: 0,
+      },
+      {
+        title: "Audit the dropped pages for technical regressions",
+        description:
+          "Run a fresh audit on each. Check for new noindex, redirect issues, schema breaks, CWV regressions, recent CMS edits.",
+        whyItMatters:
+          "Technical regressions account for ~20% of drops and are the easiest to fix. Rule them out before assuming a content issue.",
+        priority: "medium",
+        offsetDays: 1,
+      },
+      {
+        title: "Compare dropped pages to current top 3 in SERP",
+        description:
+          "Search each lost query. Compare your page's content depth, intent match, and freshness against the new top 3.",
+        whyItMatters:
+          "Most algorithm-driven drops are 'your page is no longer the best answer'. A side-by-side reveals exactly what's missing.",
+        priority: "medium",
+        offsetDays: 2,
+      },
+      {
+        title: "Build the recovery plan + assign to content workflow",
+        description:
+          "Based on findings, write 3–7 specific changes per page. Add each as tasks. Set a 30-day re-evaluation reminder.",
+        whyItMatters:
+          "Recovery requires patience — Google takes 4–8 weeks to re-evaluate. Locking changes into tasks (not your head) keeps execution disciplined.",
+        priority: "high",
+        offsetDays: 3,
+      },
+    ],
+  },
+  {
+    id: "quarterly-strategy-review",
+    name: "Quarterly strategy review",
+    description:
+      "Step back from the daily grind every 90 days. Review what worked, kill what didn't, plan the next quarter.",
+    category: "quarterly",
+    estimatedHours: 4,
+    tasks: [
+      {
+        title: "Review the past quarter's wins and losses",
+        description:
+          "Pull traffic, ranking, and conversion data over 90 days. Identify the 3 biggest wins and 3 biggest losses.",
+        whyItMatters:
+          "Patterns only emerge at quarterly scale. Weekly noise hides what's actually compounding over months.",
+        priority: "high",
+        offsetDays: 0,
+      },
+      {
+        title: "Audit your tracked keywords — drop the dead ones",
+        description:
+          "Remove keywords with zero impressions for 90+ days. Add new strategic targets that emerged from competitor / GSC research.",
+        whyItMatters:
+          "Stale keyword lists waste tracking budget and dilute focus. Quarterly pruning keeps the dashboard a real signal.",
+        priority: "medium",
+        offsetDays: 1,
+      },
+      {
+        title: "Review topical authority — which clusters compound, which don't",
+        description:
+          "Map topic clusters to actual traffic. Identify clusters earning compound traffic vs. dead-end ones.",
+        whyItMatters:
+          "Doubling down on what's working beats spreading thin. Quarterly cluster reviews redirect content investment to proven topics.",
+        priority: "medium",
+        offsetDays: 2,
+      },
+      {
+        title: "Set next quarter's 3 priorities + measurable OKRs",
+        description:
+          "Pick exactly 3 priorities. For each, write a measurable target (clicks, rankings, conversions). Share with stakeholders.",
+        whyItMatters:
+          "Three priorities focus execution. Five priorities = no priorities. Measurable OKRs make the next quarterly review meaningful instead of vibes-based.",
+        priority: "high",
+        offsetDays: 3,
+      },
+    ],
+  },
+];
+
+export function getPlaybook(id: string): Playbook | undefined {
+  return playbooks.find((p) => p.id === id);
+}

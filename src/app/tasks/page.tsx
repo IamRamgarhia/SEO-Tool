@@ -3,24 +3,14 @@ import { desc, eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
-import { ListChecks, Sparkles, Clock, Check, LayoutGrid, List } from "lucide-react";
+import { ListChecks, Sparkles, Clock, Check, LayoutGrid, LayoutTemplate, List } from "lucide-react";
 import { db } from "@/db/client";
 import { tasks, clients } from "@/db/schema";
 import { PageHeader } from "@/components/shell/page-header";
-import { KanbanCard, type TaskRowData } from "./task-row";
+import { type TaskRowData } from "./task-row";
 import { NewTaskTrigger } from "./new-task-form";
 import { TasksBulkList, type BulkTask } from "./bulk-list";
-
-const statusOrder = ["todo", "in_progress", "done", "skipped"] as const;
-const statusMeta: Record<
-  (typeof statusOrder)[number],
-  { label: string; icon: typeof Clock; iconText: string; iconBg: string }
-> = {
-  todo: { label: "To do", icon: Clock, iconText: "text-muted-foreground", iconBg: "bg-white/5 ring-white/10" },
-  in_progress: { label: "In progress", icon: Sparkles, iconText: "text-violet-300", iconBg: "bg-violet-500/15 ring-violet-400/30" },
-  done: { label: "Done", icon: Check, iconText: "text-emerald-300", iconBg: "bg-emerald-500/15 ring-emerald-400/30" },
-  skipped: { label: "Skipped", icon: Check, iconText: "text-muted-foreground", iconBg: "bg-white/5 ring-white/10" },
-};
+import { KanbanBoard } from "./kanban-board";
 
 const filterMap = {
   all: { label: "All", days: null },
@@ -88,6 +78,13 @@ export default async function TasksPage({
         accent="amber"
         actions={
           <div className="flex items-center gap-2">
+            <Link
+              href="/tasks/templates"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-white/5 px-3 py-2 text-xs font-medium text-muted-foreground ring-1 ring-inset ring-white/10 transition-colors hover:bg-white/10 hover:text-foreground"
+            >
+              <LayoutTemplate className="size-3.5" />
+              Playbooks
+            </Link>
             <NewTaskTrigger clients={allClients} />
             <div className="flex items-center gap-1 rounded-lg border border-white/10 bg-card/60 p-1 backdrop-blur">
             <Link
@@ -146,7 +143,7 @@ export default async function TasksPage({
           </div>
         </div>
       ) : view === "kanban" ? (
-        <KanbanView tasks={filtered as TaskRowData[]} nowMs={nowMs} />
+        <KanbanBoard initialTasks={filtered as TaskRowData[]} nowMs={nowMs} />
       ) : (
         <TasksBulkList tasks={filtered as BulkTask[]} nowMs={nowMs} />
       )}
@@ -174,58 +171,3 @@ function FilterTabs({ current, view }: { current: Filter; view: ViewMode }) {
   );
 }
 
-function KanbanView({
-  tasks,
-  nowMs,
-}: {
-  tasks: TaskRowData[];
-  nowMs: number;
-}) {
-  const byStatus = {
-    todo: tasks.filter((t) => t.status === "todo"),
-    in_progress: tasks.filter((t) => t.status === "in_progress"),
-    done: tasks.filter((t) => t.status === "done"),
-    skipped: tasks.filter((t) => t.status === "skipped"),
-  };
-
-  return (
-    <div className="grid gap-4 lg:grid-cols-4">
-      {statusOrder.map((s) => {
-        const list = byStatus[s];
-        const meta = statusMeta[s];
-        const Icon = meta.icon;
-        return (
-          <div
-            key={s}
-            className="rounded-2xl border border-white/5 bg-card/40 backdrop-blur-md"
-          >
-            <header className="flex items-center justify-between border-b border-white/5 px-4 py-3">
-              <div className="flex items-center gap-2">
-                <div
-                  className={`flex size-7 items-center justify-center rounded-lg ring-1 ${meta.iconBg}`}
-                >
-                  <Icon className={`size-3.5 ${meta.iconText}`} />
-                </div>
-                <span className="text-sm font-semibold">{meta.label}</span>
-              </div>
-              <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-medium text-muted-foreground ring-1 ring-inset ring-white/10">
-                {list.length}
-              </span>
-            </header>
-            <div className="space-y-2 p-3">
-              {list.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-white/5 px-3 py-6 text-center text-xs text-muted-foreground">
-                  Empty
-                </div>
-              ) : (
-                list.map((t) => (
-                  <KanbanCard key={t.id} task={t} nowMs={nowMs} />
-                ))
-              )}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}

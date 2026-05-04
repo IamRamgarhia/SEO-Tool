@@ -202,3 +202,42 @@ export async function bulkDeleteTasks(ids: number[]) {
   revalidatePath("/tasks");
   revalidatePath("/");
 }
+
+import { getPlaybook } from "@/lib/niche-templates";
+
+export async function applyPlaybookToClient(input: {
+  playbookId: string;
+  clientId: number;
+}): Promise<{ ok: true; created: number } | { ok: false; error: string }> {
+  if (!Number.isFinite(input.clientId) || input.clientId <= 0) {
+    return { ok: false, error: "Invalid client" };
+  }
+  const pb = getPlaybook(input.playbookId);
+  if (!pb) return { ok: false, error: "Unknown playbook" };
+
+  const [client] = await db
+    .select({ id: clients.id })
+    .from(clients)
+    .where(eq(clients.id, input.clientId))
+    .limit(1);
+  if (!client) return { ok: false, error: "Client not found" };
+
+  const now = Date.now();
+  const rows = pb.tasks.map((t) => ({
+    clientId: input.clientId,
+    title: t.title,
+    description: t.description,
+    whyItMatters: t.whyItMatters,
+    priority: t.priority,
+    status: "todo" as const,
+    dueDate:
+      typeof t.offsetDays === "number"
+        ? new Date(now + t.offsetDays * 86_400_000)
+        : null,
+  }));
+
+  await db.insert(tasks).values(rows);
+  revalidatePath("/tasks");
+  revalidatePath("/");
+  return { ok: true, created: rows.length };
+}

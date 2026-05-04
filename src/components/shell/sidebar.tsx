@@ -39,6 +39,8 @@ import {
   Newspaper,
   TrendingDown,
   Flame,
+  GitMerge,
+  Magnet,
   type LucideIcon,
 } from "lucide-react";
 
@@ -55,7 +57,9 @@ const groups: { title: string; items: Section[] }[] = [
       { href: "/", label: "Dashboard", icon: LayoutDashboard },
       { href: "/grader", label: "Instant audit", icon: Sparkles },
       { href: "/import", label: "Import screenshot", icon: ScanText },
+      { href: "/capture", label: "Universal capture", icon: Magnet },
       { href: "/clients", label: "Clients", icon: Users },
+      { href: "/capacity", label: "Capacity", icon: Gauge },
       { href: "/agent", label: "AI agent", icon: Bot },
       { href: "/tasks", label: "Tasks", icon: ListChecks },
     ],
@@ -66,6 +70,7 @@ const groups: { title: string; items: Section[] }[] = [
       { href: "/audits", label: "Audits", icon: ClipboardList },
       { href: "/cwv", label: "Core Web Vitals", icon: Gauge },
       { href: "/keywords", label: "Keywords", icon: Search },
+      { href: "/cannibalization", label: "Cannibalization", icon: GitMerge },
       { href: "/content", label: "Content", icon: FileText },
       { href: "/blog", label: "AI blog writer", icon: Wand2 },
       { href: "/backlinks", label: "Backlinks", icon: Link2 },

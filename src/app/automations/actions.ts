@@ -110,3 +110,52 @@ export async function deleteAutomation(id: number) {
   await db.delete(automations).where(eq(automations.id, id));
   revalidatePath("/automations");
 }
+
+import { workflowTemplates } from "@/lib/workflow-templates";
+
+export async function installWorkflowTemplate(input: {
+  templateId: string;
+  clientId?: number | null;
+  webhookUrl?: string;
+}): Promise<{ ok: true; id: number } | { ok: false; error: string }> {
+  const tmpl = workflowTemplates.find((t) => t.id === input.templateId);
+  if (!tmpl) return { ok: false, error: "Unknown template" };
+
+  const action: AutomationAction =
+    tmpl.action.kind === "webhook"
+      ? input.webhookUrl && /^https?:\/\//i.test(input.webhookUrl)
+        ? { kind: "webhook", url: input.webhookUrl }
+        : (() => {
+            throw new Error("BAD_WEBHOOK");
+          })()
+      : tmpl.action.kind === "create_task"
+        ? {
+            kind: "create_task",
+            title: tmpl.action.title,
+            priority: tmpl.action.priority,
+          }
+        : { kind: "log", message: tmpl.action.message };
+
+  try {
+    const [row] = await db
+      .insert(automations)
+      .values({
+        name: tmpl.name,
+        trigger: tmpl.trigger,
+        clientId: input.clientId ?? null,
+        actions: [action],
+        enabled: true,
+      })
+      .returning({ id: automations.id });
+    revalidatePath("/automations");
+    return { ok: true, id: row.id };
+  } catch (e) {
+    if (e instanceof Error && e.message === "BAD_WEBHOOK") {
+      return {
+        ok: false,
+        error: "This template needs a Slack/Discord webhook URL.",
+      };
+    }
+    return { ok: false, error: "Couldn't install template." };
+  }
+}
