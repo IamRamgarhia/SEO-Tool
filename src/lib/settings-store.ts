@@ -73,7 +73,12 @@ export type SettingKey =
   | "browser.stealth_enabled"
   // Cookie jar for logged-in scraping. Stored as JSON array of
   // { domain, name, value, path?, expires?, secure?, httpOnly? }.
-  | "browser.cookies";
+  | "browser.cookies"
+  // Monthly USD cap for AI calls. When set, calls past the cap return null
+  // (with a "cap reached" error), so a runaway workflow can't drain credits.
+  | "ai.monthly_cap_usd"
+  // Per-day brand list used by branded-vs-non-branded GSC splitter.
+  | "brand.match_terms";
 
 export async function getSetting<T = unknown>(
   key: SettingKey,

@@ -7,10 +7,12 @@ import {
   Camera,
   Code2,
   Compass,
+  CornerDownRight,
   Eye,
   FileText,
   Flame,
   Gauge,
+  GitMerge,
   Globe,
   Image as ImageIcon,
   Link as LinkIcon,
@@ -23,7 +25,9 @@ import {
   ScanText,
   Send,
   ServerCog,
+  Share2,
   ShieldCheck,
+  Smartphone,
   Sparkles,
   Stethoscope,
   TrendingDown,
@@ -81,6 +85,102 @@ const tools = [
     title: "Outreach personalizer",
     description:
       "Paste prospect URL + your generic template. AI mines their site for recent posts and topical signals, rewrites your opener with a specific reference. 2% → 15% reply rates.",
+    accent: "rose",
+  },
+  {
+    href: "/tools/log-analyzer",
+    icon: ServerCog,
+    title: "Server log analyzer",
+    description:
+      "Paste raw Apache/Nginx access log. Crawl-budget analytics — top crawled URLs, error rates, parameter waste, AI bot share. The biggest single gap in most SEO tools.",
+    accent: "violet",
+  },
+  {
+    href: "/tools/gsc-coverage",
+    icon: ListChecks,
+    title: "GSC index coverage (batch)",
+    description:
+      "Paste 60 URLs, hit GSC URL Inspection for each. See which are indexed, blocked, or excluded — and the reason. Daily indexation check.",
+    accent: "emerald",
+  },
+  {
+    href: "/tools/redirects-bulk",
+    icon: CornerDownRight,
+    title: "Bulk redirect-chain tester",
+    description:
+      "Paste up to 100 URLs. Trace every redirect hop in parallel. Surfaces chains, loops, mixed-scheme jumps, broken 301s. Migration-day staple.",
+    accent: "cyan",
+  },
+  {
+    href: "/tools/migration-map",
+    icon: GitMerge,
+    title: "Migration redirect-map generator",
+    description:
+      "Old URL list + new URL list → 301 map. Token-overlap + path similarity scoring. Outputs Nginx, Apache .htaccess, and Next.js redirect blocks.",
+    accent: "amber",
+  },
+  {
+    href: "/tools/schema-validate",
+    icon: ShieldCheck,
+    title: "Schema validator (live URL)",
+    description:
+      "Fetches the URL, extracts every JSON-LD block, validates required fields by type. Complements the AI schema generator.",
+    accent: "emerald",
+  },
+  {
+    href: "/tools/social-preview",
+    icon: Share2,
+    title: "OG / Twitter card preview",
+    description:
+      "Render OG + Twitter card visually. Catches missing og:image, relative URLs, missing twitter:card — the silent killers of social CTR.",
+    accent: "cyan",
+  },
+  {
+    href: "/tools/mobile-friendly",
+    icon: Smartphone,
+    title: "Mobile-friendly checker",
+    description:
+      "Google deprecated theirs in 2023; this replaces it. Viewport, charset, responsive images, fixed-width elements, tap-target sizes, intrusive interstitials.",
+    accent: "emerald",
+  },
+  {
+    href: "/tools/anchor-distribution",
+    icon: Link2,
+    title: "Anchor-text distribution",
+    description:
+      "Per-URL anchor frequency, internal vs external split, exact-match % over-optimization detection, brand variation check.",
+    accent: "violet",
+  },
+  {
+    href: "/tools/dns-whois",
+    icon: Globe,
+    title: "DNS + WHOIS / RDAP",
+    description:
+      "A/AAAA/MX/NS/TXT/CAA + registrar + expiry. Catches missing SPF/DMARC/CAA, near-expiry domains, broken nameservers. No paid API — public RDAP.",
+    accent: "cyan",
+  },
+  {
+    href: "/tools/pagerank",
+    icon: Network,
+    title: "Internal PageRank simulator",
+    description:
+      "Crawls site, builds link graph, runs 30 iterations of PageRank. Surfaces authority hubs and starved pages so you know where to add internal links.",
+    accent: "violet",
+  },
+  {
+    href: "/tools/intent-classifier",
+    icon: Compass,
+    title: "Bulk search-intent classifier",
+    description:
+      "Paste 200 queries — AI labels each as info / nav / commercial / transactional / local + suggests content format. Falls back to regex if AI not configured.",
+    accent: "cyan",
+  },
+  {
+    href: "/tools/disavow",
+    icon: ShieldCheck,
+    title: "Disavow file generator",
+    description:
+      "Paste backlink list. Auto-flags toxic domains (spam TLDs, casino/payday/random subdomains) and emits a Google-spec disavow.txt.",
     accent: "rose",
   },
   {

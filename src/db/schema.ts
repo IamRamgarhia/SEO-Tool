@@ -1147,3 +1147,26 @@ export const inboundWebhookEvents = sqliteTable("inbound_webhook_events", {
 });
 export type InboundWebhookEvent = typeof inboundWebhookEvents.$inferSelect;
 export type NewInboundWebhookEvent = typeof inboundWebhookEvents.$inferInsert;
+
+// =============== AI usage log ===============
+
+export const aiCalls = sqliteTable("ai_calls", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  feature: text("feature").notNull(),
+  provider: text("provider").notNull(),
+  model: text("model"),
+  promptTokens: integer("prompt_tokens").notNull().default(0),
+  completionTokens: integer("completion_tokens").notNull().default(0),
+  totalTokens: integer("total_tokens").notNull().default(0),
+  /** Cost in micros (millionths of USD). 1 USD = 1_000_000. */
+  costMicros: integer("cost_micros").notNull().default(0),
+  latencyMs: integer("latency_ms"),
+  clientId: integer("client_id"),
+  status: text("status").notNull().default("ok"),
+  errorMsg: text("error_msg"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+export type AiCall = typeof aiCalls.$inferSelect;
+export type NewAiCall = typeof aiCalls.$inferInsert;

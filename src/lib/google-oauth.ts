@@ -336,6 +336,108 @@ export async function fetchGscPerformance(opts: {
 }
 
 // =====================
+// GSC URL Inspection
+// =====================
+
+export type UrlInspection = {
+  url: string;
+  /** "INDEXING_STATE_UNSPECIFIED" | "INDEXING_ALLOWED" | "BLOCKED_BY_META_TAG" | "BLOCKED_BY_HTTP_HEADER" | "BLOCKED_BY_ROBOTS_TXT" */
+  indexingState: string | null;
+  /** "VERDICT_UNSPECIFIED" | "PASS" | "PARTIAL" | "FAIL" | "NEUTRAL" */
+  verdict: string | null;
+  /** "DESKTOP" | "MOBILE" — which user-agent crawled it last */
+  crawledAs: string | null;
+  lastCrawlTime: string | null;
+  pageFetchState: string | null;
+  robotsTxtState: string | null;
+  /** Whether the URL is in Google's index right now. */
+  coverageState: string | null;
+  /** Reason for non-indexing if any. */
+  coverageStateReason: string | null;
+  referringUrls: string[];
+  sitemap: string[];
+  error?: string;
+};
+
+export async function inspectGscUrl(opts: {
+  siteUrl: string;
+  inspectionUrl: string;
+  clientIdScope?: number;
+}): Promise<UrlInspection> {
+  try {
+    const token = await getAccessToken(opts.clientIdScope);
+    const res = await fetch(
+      "https://searchconsole.googleapis.com/v1/urlInspection/index:inspect",
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${token}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          inspectionUrl: opts.inspectionUrl,
+          siteUrl: opts.siteUrl,
+        }),
+      },
+    );
+    if (!res.ok) {
+      const body = await res.text();
+      return emptyInspection(opts.inspectionUrl, `${res.status} ${body.slice(0, 200)}`);
+    }
+    const data = (await res.json()) as {
+      inspectionResult?: {
+        verdict?: string;
+        indexStatusResult?: {
+          verdict?: string;
+          coverageState?: string;
+          robotsTxtState?: string;
+          pageFetchState?: string;
+          indexingState?: string;
+          lastCrawlTime?: string;
+          crawledAs?: string;
+          coverageState_reason?: string;
+          sitemap?: string[];
+          referringUrls?: string[];
+        };
+      };
+    };
+    const r = data.inspectionResult?.indexStatusResult ?? {};
+    return {
+      url: opts.inspectionUrl,
+      indexingState: r.indexingState ?? null,
+      verdict: data.inspectionResult?.verdict ?? r.verdict ?? null,
+      crawledAs: r.crawledAs ?? null,
+      lastCrawlTime: r.lastCrawlTime ?? null,
+      pageFetchState: r.pageFetchState ?? null,
+      robotsTxtState: r.robotsTxtState ?? null,
+      coverageState: r.coverageState ?? null,
+      coverageStateReason: r.coverageState_reason ?? null,
+      referringUrls: r.referringUrls ?? [],
+      sitemap: r.sitemap ?? [],
+    };
+  } catch (err) {
+    return emptyInspection(opts.inspectionUrl, (err as Error).message);
+  }
+}
+
+function emptyInspection(url: string, error: string): UrlInspection {
+  return {
+    url,
+    indexingState: null,
+    verdict: null,
+    crawledAs: null,
+    lastCrawlTime: null,
+    pageFetchState: null,
+    robotsTxtState: null,
+    coverageState: null,
+    coverageStateReason: null,
+    referringUrls: [],
+    sitemap: [],
+    error,
+  };
+}
+
+// =====================
 // GA4 (Analytics Data API)
 // =====================
 

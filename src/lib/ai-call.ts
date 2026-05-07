@@ -1,5 +1,6 @@
 import { getActiveProvider, getApiKey, getOllamaUrl } from "./api-keys";
 import { getSetting } from "./settings-store";
+import { checkMonthlyCap, logAiCall } from "./ai-usage";
 
 export type AiFeatureName =
   | "exec_summary"
@@ -49,6 +50,22 @@ export async function callAI(opts: AiCallOptions): Promise<string | null> {
   const active = await getActiveProvider();
   if (!active) return null;
 
+  // Enforce monthly cap if set
+  const cap = await checkMonthlyCap();
+  if (cap.capped) {
+    void logAiCall({
+      feature: opts.feature ?? "general",
+      provider: active,
+      model: null,
+      promptText: opts.user,
+      completionText: null,
+      status: "blocked_by_cap",
+      errorMsg: `Monthly AI cap of $${cap.capUsd?.toFixed(2)} reached.`,
+      clientId: opts.clientId ?? null,
+    });
+    return null;
+  }
+
   let system = opts.system;
   let max = opts.maxTokens ?? 2000;
   let temperature = opts.temperature ?? 0.6;
@@ -89,78 +106,100 @@ export async function callAI(opts: AiCallOptions): Promise<string | null> {
     timeoutMs,
   };
 
+  // Wrap dispatch with logging — each path returns (text, model)
+  const start = Date.now();
+  let model: string | null = null;
+  let text: string | null = null;
+  let errorMsg: string | undefined;
+
   try {
     if (active === "gemini") {
       const k = await getApiKey("gemini");
       if (!k) return null;
-      return await callGemini({ apiKey: k, ...packed, max, temperature, timeoutMs });
-    }
-    if (active === "groq") {
+      model = "gemini-1.5-flash-latest";
+      text = await callGemini({ apiKey: k, ...packed, max, temperature, timeoutMs });
+    } else if (active === "groq") {
       const k = await getApiKey("groq");
       if (!k) return null;
-      return await callOpenAICompat({
+      model = "llama-3.3-70b-versatile";
+      text = await callOpenAICompat({
         endpoint: "https://api.groq.com/openai/v1/chat/completions",
         apiKey: k,
-        model: "llama-3.3-70b-versatile",
+        model,
         ...opts,
         max,
         temperature,
         timeoutMs,
       });
-    }
-    if (active === "anthropic") {
+    } else if (active === "anthropic") {
       const k = await getApiKey("anthropic");
       if (!k) return null;
-      return await callAnthropic({ apiKey: k, ...packed, max, temperature, timeoutMs });
-    }
-    if (active === "openai") {
+      model = "claude-haiku-4-5-20251001";
+      text = await callAnthropic({ apiKey: k, ...packed, max, temperature, timeoutMs });
+    } else if (active === "openai") {
       const k = await getApiKey("openai");
       if (!k) return null;
-      return await callOpenAICompat({
+      model = "gpt-4o-mini";
+      text = await callOpenAICompat({
         endpoint: "https://api.openai.com/v1/chat/completions",
         apiKey: k,
-        model: "gpt-4o-mini",
+        model,
         ...opts,
         max,
         temperature,
         timeoutMs,
       });
-    }
-    if (active === "openrouter") {
+    } else if (active === "openrouter") {
       const k = await getApiKey("openrouter");
       if (!k) return null;
-      return await callOpenAICompat({
+      model = "meta-llama/llama-3.3-70b-instruct:free";
+      text = await callOpenAICompat({
         endpoint: "https://openrouter.ai/api/v1/chat/completions",
         apiKey: k,
-        model: "meta-llama/llama-3.3-70b-instruct:free",
+        model,
         extraHeaders: { "x-title": "SEO Tool" },
         ...opts,
         max,
         temperature,
         timeoutMs,
       });
-    }
-    if (active === "perplexity") {
+    } else if (active === "perplexity") {
       const k = await getApiKey("perplexity");
       if (!k) return null;
-      return await callOpenAICompat({
+      model = "sonar";
+      text = await callOpenAICompat({
         endpoint: "https://api.perplexity.ai/chat/completions",
         apiKey: k,
-        model: "sonar",
+        model,
         ...opts,
         max,
         temperature,
         timeoutMs,
       });
-    }
-    if (active === "ollama") {
+    } else if (active === "ollama") {
       const url = await getOllamaUrl();
-      return await callOllama({ url, ...packed, max, temperature, timeoutMs });
+      model = "llama3";
+      text = await callOllama({ url, ...packed, max, temperature, timeoutMs });
     }
-  } catch {
-    return null;
+  } catch (err) {
+    errorMsg = (err as Error).message;
+    text = null;
   }
-  return null;
+
+  // Log every call (success or failure) — async-fire, never block
+  void logAiCall({
+    feature: opts.feature ?? "general",
+    provider: active,
+    model,
+    promptText: `${system}\n\n${opts.user}`,
+    completionText: text,
+    latencyMs: Date.now() - start,
+    clientId: opts.clientId ?? null,
+    status: text ? "ok" : "error",
+    errorMsg,
+  });
+
+  return text;
 }
 
 type CallArgs = AiCallOptions & {
