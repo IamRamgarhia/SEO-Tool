@@ -650,6 +650,47 @@ const tools = [
       "Only 11% of cited domains overlap between ChatGPT and Perplexity. Niche-specific priority + concrete tactics for each platform: ChatGPT, Perplexity, Claude, Gemini, AI Overviews.",
     accent: "violet",
   },
+  // 2026 SEO rules — second wave
+  {
+    href: "/tools/crux-origin",
+    icon: Gauge,
+    title: "CrUX Origin Summary",
+    description:
+      "Google's CWV ranking signal uses 28-day origin-level field data, not URL-level. Compare URL vs origin scopes side-by-side so you don't optimize the wrong thing.",
+    accent: "cyan",
+  },
+  {
+    href: "/tools/perf-budget",
+    icon: Gauge,
+    title: "Performance budget enforcement",
+    description:
+      "Define byte / request / Core Web Vitals budgets. We measure actuals via PageSpeed + CrUX and surface every line item over budget. Catch regressions before prod.",
+    accent: "amber",
+  },
+  {
+    href: "/tools/facet-trap",
+    icon: Network,
+    title: "Faceted-nav crawl-trap detector",
+    description:
+      "Filter / sort / pagination params can balloon a crawl from thousands to millions of near-duplicates. We crawl + group URLs by query shape and flag groups needing canonical/noindex protection.",
+    accent: "rose",
+  },
+  {
+    href: "/tools/screenshot-import",
+    icon: ScanText,
+    title: "Screenshot import — paid-tool data parser",
+    description:
+      "Drag a screenshot from Ahrefs / Semrush / GSC / GA4. AI vision extracts the structured data so you can stop paying for tools you only use occasionally.",
+    accent: "violet",
+  },
+  {
+    href: "/tools/github-pr",
+    icon: GitMerge,
+    title: "GitHub PR generator for SEO fixes",
+    description:
+      "For sites without a CMS write-bridge (Next.js / custom code), open a structured PR with a checklist of SEO fixes for your developer to implement.",
+    accent: "cyan",
+  },
 ];
 
 const accentMap: Record<string, string> = {

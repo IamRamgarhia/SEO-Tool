@@ -541,3 +541,72 @@
     animation: float 6s ease-in-out infinite;
   }
 }
+/* ============================================================
+ * Pro Mode visual differentiation.
+ *
+ * Pro mode trades plain-language explanations for denser,
+ * developer-style information density. The toggle lives in
+ * Settings → UI; we surface it via data-ui-mode on <html>.
+ *
+ * Strategy: scope to opt-in classes (.pro-dense, .pro-tabular,
+ * .pro-hide-help). Components add the class and the rule kicks
+ * in only when the user is in pro mode. No visual change for
+ * Guided users.
+ * ============================================================ */
+
+html[data-ui-mode="pro"] {
+  /* Tighten the main content padding */
+  & main {
+    padding: 1.25rem 1.5rem;
+  }
+
+  /* Tighter table rows */
+  & table.pro-dense td,
+  & table.pro-dense th {
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+    font-size: 0.78rem;
+    line-height: 1.3;
+  }
+
+  /* Help / explanation banners hide in pro mode */
+  & .pro-hide-help {
+    display: none !important;
+  }
+
+  /* Tabular numbers everywhere — better for scanning ranks/scores */
+  & .pro-tabular,
+  & .pro-tabular * {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Slightly tighter font for body text in pro */
+  & .pro-tight {
+    font-size: 0.85rem;
+    line-height: 1.4;
+  }
+
+  /* Reduce gaps in lists */
+  & ul.pro-dense > li,
+  & ol.pro-dense > li {
+    padding-top: 0.2rem;
+    padding-bottom: 0.2rem;
+  }
+
+  /* Pro mode marker — visible badge so users always know they're in pro */
+  & .pro-mode-marker::after {
+    content: "PRO";
+    display: inline-block;
+    margin-left: 0.4rem;
+    padding: 0.05rem 0.35rem;
+    border-radius: 0.25rem;
+    background: rgba(124, 58, 237, 0.2);
+    color: rgb(196, 181, 253);
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    line-height: 1;
+    border: 1px solid rgba(124, 58, 237, 0.4);
+    vertical-align: middle;
+  }
+}

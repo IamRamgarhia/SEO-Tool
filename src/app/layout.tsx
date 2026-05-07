@@ -6,6 +6,7 @@ import { AIAssistant } from "@/components/shell/ai-assistant";
 import { ServiceWorkerRegister } from "@/components/shell/sw-register";
 import { QuickAddClientProvider } from "@/components/shell/quick-add-client-dialog";
 import { getUnreadCounts } from "@/lib/unread-counts";
+import { getUiMode } from "./settings/ui-actions";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -54,10 +55,13 @@ export default async function RootLayout({
     unreadByHref = {};
   }
 
+  const uiMode = await getUiMode();
+
   return (
     <html
       lang="en"
       suppressHydrationWarning
+      data-ui-mode={uiMode}
       className={`dark ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="h-screen overflow-hidden bg-background text-foreground">

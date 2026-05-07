@@ -22,8 +22,10 @@ import {
   dismissSuggestion,
   reopenSuggestion,
   runAgent,
+  runAgentExecute,
   suggestionToTask,
 } from "@/app/agent/actions";
+import type { AgentRunReport } from "@/lib/seo-agent-runner";
 
 export type SuggestionRow = {
   id: number;
@@ -87,6 +89,8 @@ export function SuggestionsList({
 }) {
   const [filter, setFilter] = useState<FilterStatus>("new");
   const [runPending, startRun] = useTransition();
+  const [execPending, startExec] = useTransition();
+  const [execReport, setExecReport] = useState<AgentRunReport | null>(null);
   const [runMessage, setRunMessage] = useState<{
     tone: "success" | "error";
     text: string;
@@ -138,6 +142,33 @@ export function SuggestionsList({
             </>
           )}
         </Button>
+        <Button
+          variant="outline"
+          disabled={
+            execPending ||
+            initialSuggestions.filter((s) => s.status === "new").length === 0
+          }
+          onClick={() => {
+            setExecReport(null);
+            startExec(async () => {
+              const r = await runAgentExecute(clientId);
+              setExecReport(r);
+            });
+          }}
+          title="Auto-apply title/meta suggestions via the WP bridge and queue everything else as tasks. Bounded: max 20 actions, 60s wall-clock."
+        >
+          {execPending ? (
+            <>
+              <Loader2 className="size-3.5 animate-spin" />
+              Executing…
+            </>
+          ) : (
+            <>
+              <Bot className="size-3.5" />
+              Execute pending
+            </>
+          )}
+        </Button>
         {runMessage && (
           <span
             className={`inline-flex items-center gap-1.5 text-xs ${
@@ -155,6 +186,39 @@ export function SuggestionsList({
           </span>
         )}
       </div>
+
+      {execReport && (
+        <section className="rounded-2xl border border-violet-500/20 bg-violet-500/5 p-4 text-xs">
+          <p className="font-medium text-violet-200">
+            Agent execution: {execReport.applied} auto-applied,{" "}
+            {execReport.queued} queued as tasks, {execReport.skipped} skipped ·{" "}
+            {Math.round(execReport.durationMs / 100) / 10}s
+          </p>
+          <ul className="mt-2 space-y-0.5 text-[11px] text-muted-foreground">
+            {execReport.actions.slice(0, 8).map((a) => (
+              <li key={a.suggestionId}>
+                <span
+                  className={
+                    a.outcome === "auto_applied"
+                      ? "text-emerald-300"
+                      : a.outcome === "queued_as_task"
+                        ? "text-cyan-300"
+                        : "text-amber-300"
+                  }
+                >
+                  · {a.outcome.replace(/_/g, " ")}
+                </span>{" "}
+                — {a.type}
+                {a.targetUrl ? ` · ${new URL(a.targetUrl).pathname}` : ""}
+                {a.detail ? ` — ${a.detail}` : ""}
+              </li>
+            ))}
+            {execReport.actions.length > 8 && (
+              <li>… and {execReport.actions.length - 8} more</li>
+            )}
+          </ul>
+        </section>
+      )}
 
       {/* Filters */}
       {initialSuggestions.length > 0 && (

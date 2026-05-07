@@ -107,13 +107,13 @@ export function PageHeader({
                 <Icon className={cn("size-5", a.iconText)} />
               </div>
             )}
-            <h1 className="text-[2.1rem] font-semibold leading-[1.1] tracking-tight">
+            <h1 className="pro-mode-marker text-[2.1rem] font-semibold leading-[1.1] tracking-tight">
               <span className="text-gradient-brand">{title}</span>
             </h1>
           </div>
 
           {description && (
-            <p className="max-w-2xl text-[1rem] leading-relaxed text-muted-foreground">
+            <p className="pro-hide-help max-w-2xl text-[1rem] leading-relaxed text-muted-foreground">
               {description}
             </p>
           )}

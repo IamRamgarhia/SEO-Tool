@@ -5,11 +5,25 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
 import { aiSuggestions, tasks } from "@/db/schema";
 import { runSeoAgent, type AgentRunResult } from "@/lib/seo-agent";
+import {
+  runAgentActions,
+  type AgentRunReport,
+} from "@/lib/seo-agent-runner";
 
 export async function runAgent(clientId: number): Promise<AgentRunResult> {
   const result = await runSeoAgent(clientId);
   revalidatePath(`/agent/c/${clientId}`);
   return result;
+}
+
+export async function runAgentExecute(
+  clientId: number,
+): Promise<AgentRunReport> {
+  const report = await runAgentActions(clientId);
+  revalidatePath(`/agent/c/${clientId}`);
+  revalidatePath(`/clients/${clientId}`);
+  revalidatePath("/tasks");
+  return report;
 }
 
 export async function applySuggestion(suggestionId: number) {

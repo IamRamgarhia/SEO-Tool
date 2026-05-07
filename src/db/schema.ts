@@ -1345,3 +1345,78 @@ export const guestPostDrafts = sqliteTable("guest_post_drafts", {
 });
 export type GuestPostDraft = typeof guestPostDrafts.$inferSelect;
 export type NewGuestPostDraft = typeof guestPostDrafts.$inferInsert;
+
+/**
+ * Knowledge Panel snapshots — periodic capture of Google's brand Knowledge
+ * Panel content for tracked clients. Diff between consecutive snapshots
+ * surfaces changes (description, founder, sameAs, social profiles, image).
+ */
+export const knowledgePanelSnapshots = sqliteTable("knowledge_panel_snapshots", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  clientId: integer("client_id")
+    .notNull()
+    .references(() => clients.id, { onDelete: "cascade" }),
+  /** Brand query that surfaced the panel ("Acme Inc"). */
+  query: text("query").notNull(),
+  /** Whether a Knowledge Panel was present at this scan. */
+  present: integer("present", { mode: "boolean" }).notNull().default(false),
+  title: text("title"),
+  subtitle: text("subtitle"),
+  description: text("description"),
+  imageUrl: text("image_url"),
+  /** Wikipedia / Crunchbase / etc. — entity sameAs links. */
+  sameAs: text("same_as", { mode: "json" }).$type<string[]>(),
+  /** Free-text social URLs Google shows in the panel. */
+  socials: text("socials", { mode: "json" }).$type<string[]>(),
+  /** Any factual rows shown (founder, headquarters, etc). */
+  facts: text("facts", { mode: "json" }).$type<
+    { label: string; value: string }[]
+  >(),
+  /** Raw HTML excerpt for forensics. Limited to ~32KB. */
+  rawHtml: text("raw_html"),
+  capturedAt: integer("captured_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+export type KnowledgePanelSnapshot = typeof knowledgePanelSnapshots.$inferSelect;
+export type NewKnowledgePanelSnapshot = typeof knowledgePanelSnapshots.$inferInsert;
+
+/**
+ * Author topic-authority tracking. We periodically scan competitors' /author/
+ * pages (and similar bylines) to map which named authors publish in our niche
+ * — and which have credentials, social links, or Wikipedia entries that
+ * suggest topical authority. Used to identify outreach targets and to
+ * benchmark our own author bylines against competitors.
+ */
+export const authorAuthorityRecords = sqliteTable("author_authority_records", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  clientId: integer("client_id")
+    .notNull()
+    .references(() => clients.id, { onDelete: "cascade" }),
+  /** Domain we observed this author on. */
+  domain: text("domain").notNull(),
+  /** Author display name. */
+  authorName: text("author_name").notNull(),
+  /** Profile / bio URL on the source domain. */
+  authorUrl: text("author_url"),
+  /** Job title / byline tagline. */
+  jobTitle: text("job_title"),
+  bio: text("bio"),
+  /** Total post count we observed in the niche. */
+  postCount: integer("post_count").notNull().default(0),
+  /** Topics inferred from their post titles. */
+  topics: text("topics", { mode: "json" }).$type<string[]>(),
+  /** External profile URLs (Twitter, LinkedIn, Wikipedia, etc.). */
+  sameAs: text("same_as", { mode: "json" }).$type<string[]>(),
+  /** Heuristic 0-100 authority score. */
+  authorityScore: integer("authority_score").notNull().default(0),
+  /** When we first saw them. */
+  firstSeen: integer("first_seen", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  lastSeen: integer("last_seen", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+export type AuthorAuthorityRecord = typeof authorAuthorityRecords.$inferSelect;
+export type NewAuthorAuthorityRecord = typeof authorAuthorityRecords.$inferInsert;

@@ -42,6 +42,7 @@ import {
   GitMerge,
   Magnet,
   Video,
+  Globe,
   type LucideIcon,
 } from "lucide-react";
 
@@ -99,6 +100,8 @@ const groups: { title: string; items: Section[] }[] = [
       { href: "/competitors/playbook", label: "Competitor playbook", icon: Network },
       { href: "/brand-monitor", label: "Brand monitor", icon: Network },
       { href: "/brand-serp", label: "Brand SERP", icon: Network },
+      { href: "/knowledge-panel", label: "Knowledge Panel", icon: Globe },
+      { href: "/author-authority", label: "Author authority", icon: Users },
       { href: "/local-grid", label: "Local heatmap", icon: MapPin },
       { href: "/compare", label: "Site compare", icon: GitCompare },
       { href: "/monitor", label: "Page monitor", icon: Activity },

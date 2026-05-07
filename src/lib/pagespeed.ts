@@ -26,6 +26,17 @@ export type CwvScanResult = {
     savingsMs: number | null;
     description: string;
   }[];
+  /** Resource-byte breakdown (from Lighthouse 'resource-summary' audit). */
+  bytesByType?: {
+    document?: number;
+    stylesheet?: number;
+    script?: number;
+    image?: number;
+    font?: number;
+    other?: number;
+  };
+  totalBytes?: number;
+  requestCount?: number;
   overall: "pass" | "needs_improvement" | "fail" | null;
   error?: string;
 };
@@ -104,7 +115,14 @@ export async function scanCwv(opts: {
           displayValue?: string;
           title?: string;
           description?: string;
-          details?: { overallSavingsMs?: number };
+          details?: {
+            overallSavingsMs?: number;
+            items?: {
+              resourceType?: string;
+              transferSize?: number;
+              requestCount?: number;
+            }[];
+          };
         }
       >;
     };
@@ -124,6 +142,38 @@ export async function scanCwv(opts: {
   out.accessibility = scoreToInt(cats["accessibility"]?.score);
   out.bestPractices = scoreToInt(cats["best-practices"]?.score);
   out.seo = scoreToInt(cats["seo"]?.score);
+
+  // Resource-summary audit: per-type byte weight + total
+  const rsItems = (audits["resource-summary"]?.details?.items ?? []) as {
+    resourceType?: string;
+    transferSize?: number;
+    requestCount?: number;
+  }[];
+  if (rsItems.length > 0) {
+    const bytes: NonNullable<CwvScanResult["bytesByType"]> = {};
+    let total = 0;
+    let reqs = 0;
+    for (const item of rsItems) {
+      const t = item.resourceType ?? "";
+      const sz = item.transferSize ?? 0;
+      const rc = item.requestCount ?? 0;
+      if (t === "document") bytes.document = (bytes.document ?? 0) + sz;
+      else if (t === "stylesheet")
+        bytes.stylesheet = (bytes.stylesheet ?? 0) + sz;
+      else if (t === "script") bytes.script = (bytes.script ?? 0) + sz;
+      else if (t === "image") bytes.image = (bytes.image ?? 0) + sz;
+      else if (t === "font") bytes.font = (bytes.font ?? 0) + sz;
+      else if (t === "other" || t === "media")
+        bytes.other = (bytes.other ?? 0) + sz;
+      if (t === "total") {
+        total = sz;
+        reqs = rc;
+      }
+    }
+    out.bytesByType = bytes;
+    out.totalBytes = total;
+    out.requestCount = reqs;
+  }
 
   out.lcpMs = round(audits["largest-contentful-paint"]?.numericValue);
   out.inpMs = round(audits["interaction-to-next-paint"]?.numericValue);

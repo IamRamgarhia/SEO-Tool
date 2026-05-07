@@ -105,6 +105,76 @@ export async function fetchCruxData(opts: {
   return await queryCrux(key, { origin, formFactor });
 }
 
+/**
+ * Fetch BOTH URL-level and origin-level CrUX data side-by-side. Origin-level
+ * is what Google rolls into the page-experience ranking signal (28-day
+ * window, all pages on the origin). A page can pass URL-level CWV and still
+ * fail the ranking signal if the origin as a whole is slow.
+ *
+ * Returns:
+ *   - urlScope: data for the exact URL (or hasData=false if not enough traffic)
+ *   - originScope: data for the entire origin (almost always populated)
+ *   - gap: per-metric difference between URL and origin (informational)
+ */
+export async function fetchCruxBothScopes(opts: {
+  url: string;
+  formFactor?: CruxFormFactor;
+}): Promise<{
+  urlScope: CruxResult;
+  originScope: CruxResult;
+  gap: { metric: string; urlP75: number; originP75: number; delta: number }[];
+}> {
+  const formFactor = opts.formFactor ?? "PHONE";
+  const key = await getPageSpeedKey();
+  let origin = "";
+  try {
+    origin = new URL(opts.url).origin;
+  } catch {
+    // Invalid URL — return error in both scopes
+    const err: CruxResult = {
+      hasData: false,
+      scope: null,
+      formFactor: null,
+      collectionPeriod: null,
+      metrics: {},
+      error: "Invalid URL",
+    };
+    return { urlScope: err, originScope: err, gap: [] };
+  }
+  if (!key) {
+    const err: CruxResult = {
+      hasData: false,
+      scope: null,
+      formFactor: null,
+      collectionPeriod: null,
+      metrics: {},
+      error:
+        "CrUX API requires a Google API key (same as PageSpeed Insights).",
+    };
+    return { urlScope: err, originScope: err, gap: [] };
+  }
+  const [urlScope, originScope] = await Promise.all([
+    queryCrux(key, { url: opts.url, formFactor }),
+    queryCrux(key, { origin, formFactor }),
+  ]);
+  const gap: {
+    metric: string;
+    urlP75: number;
+    originP75: number;
+    delta: number;
+  }[] = [];
+  if (urlScope.hasData && originScope.hasData) {
+    for (const m of ["lcp", "inp", "cls", "fcp", "ttfb"] as const) {
+      const u = urlScope.metrics[m]?.p75;
+      const o = originScope.metrics[m]?.p75;
+      if (typeof u === "number" && typeof o === "number") {
+        gap.push({ metric: m, urlP75: u, originP75: o, delta: o - u });
+      }
+    }
+  }
+  return { urlScope, originScope, gap };
+}
+
 async function queryCrux(
   key: string,
   body: { url?: string; origin?: string; formFactor: CruxFormFactor },
