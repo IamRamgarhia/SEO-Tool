@@ -7,6 +7,7 @@ import {
   type CorpusInsights,
   type GradeResult,
 } from "@/lib/content-grader";
+import { saveToolRun } from "@/lib/tool-runs";
 
 const inputSchema = z.object({
   targetKeyword: z.string().trim().min(2).max(120),
@@ -58,10 +59,20 @@ export async function gradeContent(
     insights,
   });
 
-  return {
-    ok: true,
+  const result = {
+    ok: true as const,
     insights,
     grade,
     targetKeyword: parsed.data.targetKeyword,
   };
+  await saveToolRun({
+    toolId: "content-grader",
+    label: `${parsed.data.targetKeyword} · grade ${grade.score}/100`,
+    input: {
+      targetKeyword: parsed.data.targetKeyword,
+      country: parsed.data.country,
+    },
+    result,
+  }).catch(() => undefined);
+  return result;
 }

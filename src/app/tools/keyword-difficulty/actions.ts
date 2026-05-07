@@ -2,6 +2,7 @@
 
 import { scanSerp } from "@/lib/serp-scanner";
 import { callAI } from "@/lib/ai-call";
+import { saveToolRun } from "@/lib/tool-runs";
 
 export type DifficultyResult = {
   ok: true;
@@ -213,8 +214,8 @@ Unique domains: ${uniqueDomains}/${top.length}`;
         .trim() || null;
   }
 
-  return {
-    ok: true,
+  const result = {
+    ok: true as const,
     query,
     difficulty,
     difficulty_band: band(difficulty),
@@ -231,4 +232,11 @@ Unique domains: ${uniqueDomains}/${top.length}`;
       })),
     },
   };
+  await saveToolRun({
+    toolId: "keyword-difficulty",
+    label: `${query} · ${difficulty}/100 · ${band(difficulty)}`,
+    input: { query },
+    result,
+  }).catch(() => undefined);
+  return result;
 }

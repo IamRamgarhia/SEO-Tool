@@ -1458,3 +1458,70 @@ export const toolRuns = sqliteTable("tool_runs", {
 });
 export type ToolRun = typeof toolRuns.$inferSelect;
 export type NewToolRun = typeof toolRuns.$inferInsert;
+
+/**
+ * Chat conversation persistence — covers SEO chat, Ask the Tool, and the
+ * client portal chat. Each conversation is a thread; messages live in the
+ * sibling chat_messages table.
+ */
+export const chatConversations = sqliteTable("chat_conversations", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  kind: text("kind", {
+    enum: ["seo_chat", "ask_tool", "portal_chat"],
+  }).notNull(),
+  clientId: integer("client_id").references(() => clients.id, {
+    onDelete: "set null",
+  }),
+  title: text("title").notNull(),
+  settings: text("settings", { mode: "json" }).$type<Record<string, unknown>>(),
+  pinned: integer("pinned", { mode: "boolean" }).notNull().default(false),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+export type ChatConversation = typeof chatConversations.$inferSelect;
+export type NewChatConversation = typeof chatConversations.$inferInsert;
+
+export const chatMessages = sqliteTable("chat_messages", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  conversationId: integer("conversation_id")
+    .notNull()
+    .references(() => chatConversations.id, { onDelete: "cascade" }),
+  role: text("role", { enum: ["user", "assistant", "error"] }).notNull(),
+  content: text("content").notNull(),
+  imageDataUrl: text("image_data_url"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type NewChatMessage = typeof chatMessages.$inferInsert;
+
+/**
+ * Generated client report archive. Stores PDF bytes (base64) + the
+ * structured data the PDF was rendered from, so reports can be
+ * re-downloaded forever and compared period-over-period.
+ */
+export const reportArchives = sqliteTable("report_archives", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  clientId: integer("client_id")
+    .notNull()
+    .references(() => clients.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  periodStart: integer("period_start", { mode: "timestamp" }),
+  periodEnd: integer("period_end", { mode: "timestamp" }),
+  template: text("template"),
+  pdfBase64: text("pdf_base64"),
+  pdfBytes: integer("pdf_bytes"),
+  dataSnapshot: text("data_snapshot", { mode: "json" }).$type<unknown>(),
+  execSummary: text("exec_summary"),
+  pinned: integer("pinned", { mode: "boolean" }).notNull().default(false),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+export type ReportArchive = typeof reportArchives.$inferSelect;
+export type NewReportArchive = typeof reportArchives.$inferInsert;

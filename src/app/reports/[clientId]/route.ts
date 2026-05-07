@@ -5,7 +5,7 @@ import {
 } from "@/lib/report-generator";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { clients } from "@/db/schema";
+import { clients, reportArchives } from "@/db/schema";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +59,22 @@ export async function GET(
 
   const today = new Date().toISOString().split("T")[0];
   const filename = `${safeFilename(client.name)}-${template}-${today}.pdf`;
+
+  // Archive — fire-and-forget, never block the download on a DB error.
+  const periodEnd = new Date();
+  const periodStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  void db
+    .insert(reportArchives)
+    .values({
+      clientId: id,
+      title: `${client.name} — ${template} report — ${today}`,
+      periodStart,
+      periodEnd,
+      template,
+      pdfBase64: pdf.toString("base64"),
+      pdfBytes: pdf.length,
+    })
+    .catch(() => undefined);
 
   // @ts-expect-error - Buffer is valid BodyInit at runtime
   return new NextResponse(pdf, {

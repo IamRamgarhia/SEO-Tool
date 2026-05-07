@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { detectRefresh, type RefreshPlan } from "@/lib/refresh-detector";
+import { saveToolRun } from "@/lib/tool-runs";
 
 const inputSchema = z.object({
   url: z
@@ -36,6 +37,12 @@ export async function runRefresh(
       targetKeyword: parsed.data.targetKeyword,
       country: parsed.data.country,
     });
+    await saveToolRun({
+      toolId: "refresh",
+      label: `${parsed.data.url} · "${parsed.data.targetKeyword}"`,
+      input: parsed.data,
+      result: { ok: true, plan },
+    }).catch(() => undefined);
     return { ok: true, plan };
   } catch (err) {
     return { ok: false, error: (err as Error).message ?? "Refresh detection failed" };

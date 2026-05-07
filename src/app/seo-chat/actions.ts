@@ -80,7 +80,13 @@ const MAX_HISTORY = 10;
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 
 export type SeoChatResearchResult =
-  | { ok: true; reply: string; researchSnippet?: string }
+  | {
+      ok: true;
+      reply: string;
+      researchSnippet?: string;
+      /** ID of the conversation this turn was appended to (for the next turn). */
+      conversationId: number;
+    }
   | { ok: false; error: string };
 
 export async function seoChat(
@@ -90,6 +96,7 @@ export async function seoChat(
   research?: boolean,
   length: AnswerLength = "short",
   modelChoice?: { provider?: string; model?: string },
+  conversationId?: number | null,
 ): Promise<SeoChatResearchResult> {
   if (history.length === 0 || history[history.length - 1].role !== "user") {
     return { ok: false, error: "No question to answer." };
@@ -214,5 +221,31 @@ export async function seoChat(
         "AI provider didn't respond. Configure a vision-capable provider (OpenAI, Anthropic, Gemini, or OpenRouter) in Settings → AI provider.",
     };
   }
-  return { ok: true, reply, researchSnippet };
+
+  // Persist this turn — conversationId is null on the very first message,
+  // saveChatTurn creates a new conversation in that case.
+  let savedConversationId = conversationId ?? null;
+  try {
+    const { saveChatTurn } = await import("@/lib/chat-store");
+    const lastUserMessage = trimmed[trimmed.length - 1]?.content ?? "";
+    savedConversationId = await saveChatTurn({
+      conversationId: savedConversationId,
+      kind: "seo_chat",
+      firstUserMessage: lastUserMessage,
+      settings: { skill: skill.id, length, research: research ?? false },
+      userMessage: lastUserMessage,
+      userImageDataUrl: imageDataUrl ?? null,
+      assistantReply: reply,
+    });
+  } catch {
+    // Silent — never let persistence break the user's reply
+    savedConversationId = savedConversationId ?? -1;
+  }
+
+  return {
+    ok: true,
+    reply,
+    researchSnippet,
+    conversationId: savedConversationId ?? -1,
+  };
 }

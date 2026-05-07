@@ -5,6 +5,7 @@ import {
   diagnoseTrafficDrop,
   type TrafficDropResult,
 } from "@/lib/traffic-drop";
+import { saveToolRun } from "@/lib/tool-runs";
 
 const inputSchema = z.object({
   siteUrl: z.string().trim().min(3),
@@ -29,5 +30,11 @@ export async function runDiagnostic(
   }
   const r = await diagnoseTrafficDrop({ siteUrl: parsed.data.siteUrl });
   if (!r.ok && r.error) return { ok: false, error: r.error };
+  await saveToolRun({
+    toolId: "traffic-drop",
+    label: parsed.data.siteUrl,
+    input: { siteUrl: parsed.data.siteUrl },
+    result: { ok: true, result: r },
+  }).catch(() => undefined);
   return { ok: true, result: r };
 }

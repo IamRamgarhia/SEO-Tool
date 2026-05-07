@@ -47,6 +47,7 @@ export function AskClient({
     provider: undefined,
     model: undefined,
   });
+  const [conversationId, setConversationId] = useState<number | null>(null);
 
   function ask(q: string = question) {
     if (!q.trim()) return;
@@ -59,9 +60,11 @@ export function AskClient({
         clientId: clientId ? Number(clientId) : null,
         question: q,
         modelChoice: { provider: modelSel.provider, model: modelSel.model },
+        conversationId,
       });
       if (r.ok) {
         setTurns((t) => [...t, { kind: "tool", text: r.answer }]);
+        setConversationId(r.conversationId);
       } else {
         setTurns((t) => [...t, { kind: "error", text: r.error }]);
       }

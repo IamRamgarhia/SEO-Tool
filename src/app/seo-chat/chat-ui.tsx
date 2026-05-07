@@ -56,6 +56,7 @@ export function SeoChatUi() {
     provider: undefined,
     model: undefined,
   });
+  const [conversationId, setConversationId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -93,9 +94,11 @@ export function SeoChatUi() {
         research,
         length,
         { provider: modelSel.provider, model: modelSel.model },
+        conversationId,
       );
       if (r.ok) {
         setMessages([...next, { role: "assistant", content: r.reply }]);
+        setConversationId(r.conversationId);
       } else {
         setError(r.error);
       }

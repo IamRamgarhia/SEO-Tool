@@ -226,5 +226,19 @@ export async function portalChat(
         "The AI assistant isn't available right now. Your account manager can answer any time.",
     };
   }
+  // Persist this turn — the SEO has visibility into portal chats too.
+  try {
+    const { saveChatTurn } = await import("@/lib/chat-store");
+    await saveChatTurn({
+      kind: "portal_chat",
+      clientId: client.id,
+      firstUserMessage: lastUser,
+      userMessage: lastUser,
+      assistantReply: reply,
+      settings: { token: token.slice(0, 8) + "…" },
+    });
+  } catch {
+    // ignore — never break the user's reply on persistence failure
+  }
   return { ok: true, reply };
 }

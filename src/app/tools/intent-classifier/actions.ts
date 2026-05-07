@@ -1,6 +1,7 @@
 "use server";
 
 import { callAI } from "@/lib/ai-call";
+import { saveToolRun } from "@/lib/tool-runs";
 
 export type IntentRow = {
   query: string;
@@ -121,7 +122,15 @@ export async function runClassify(
             });
           }
         }
-        if (rows.length > 0) return { ok: true, rows };
+        if (rows.length > 0) {
+          await saveToolRun({
+            toolId: "intent-classifier",
+            label: `${rows.length} queries classified`,
+            input: { queries },
+            result: { ok: true, rows },
+          }).catch(() => undefined);
+          return { ok: true, rows };
+        }
       } catch {
         // fall through to regex
       }
@@ -129,5 +138,12 @@ export async function runClassify(
   }
 
   // Regex fallback when AI unavailable
-  return { ok: true, rows: queries.map(fallbackClassify) };
+  const rows = queries.map(fallbackClassify);
+  await saveToolRun({
+    toolId: "intent-classifier",
+    label: `${rows.length} queries classified (regex fallback)`,
+    input: { queries },
+    result: { ok: true, rows },
+  }).catch(() => undefined);
+  return { ok: true, rows };
 }

@@ -109,6 +109,8 @@ const groups: { title: string; items: Section[] }[] = [
       { href: "/ai-visibility", label: "AI visibility", icon: Sparkles },
       { href: "/activity", label: "Activity log", icon: History },
       { href: "/history", label: "Tool run history", icon: Save },
+      { href: "/chats", label: "AI chat history", icon: Bot },
+      { href: "/reports/archive", label: "Report archive", icon: FileDown },
     ],
   },
   {

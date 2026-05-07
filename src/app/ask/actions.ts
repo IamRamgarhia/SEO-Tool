@@ -12,7 +12,12 @@ import {
 import { callAI } from "@/lib/ai-call";
 
 export type AskResult =
-  | { ok: true; answer: string; contextUsed: string }
+  | {
+      ok: true;
+      answer: string;
+      contextUsed: string;
+      conversationId: number;
+    }
   | { ok: false; error: string };
 
 /**
@@ -104,6 +109,7 @@ export async function askTheTool(input: {
   clientId?: number | null;
   question: string;
   modelChoice?: { provider?: string; model?: string };
+  conversationId?: number | null;
 }): Promise<AskResult> {
   const question = input.question.trim();
   if (!question) {
@@ -149,5 +155,26 @@ Be specific, action-oriented, and concise. Cite which data point you're reasonin
     };
   }
 
-  return { ok: true, answer, contextUsed: context };
+  let savedConversationId = input.conversationId ?? null;
+  try {
+    const { saveChatTurn } = await import("@/lib/chat-store");
+    savedConversationId = await saveChatTurn({
+      conversationId: savedConversationId,
+      kind: "ask_tool",
+      clientId: input.clientId ?? null,
+      firstUserMessage: question,
+      userMessage: question,
+      assistantReply: answer,
+      settings: { hasContext: !!context },
+    });
+  } catch {
+    savedConversationId = savedConversationId ?? -1;
+  }
+
+  return {
+    ok: true,
+    answer,
+    contextUsed: context,
+    conversationId: savedConversationId ?? -1,
+  };
 }

@@ -123,4 +123,12 @@ export const TOOL_LABELS: Record<string, string> = {
   "aio-passage": "AIO passage scoring",
   "reputation-abuse-risk": "Reputation abuse risk scan",
   "person-schema": "Person schema generator",
+  "eeat-audit": "E-E-A-T audit",
+  refresh: "Content refresh planner",
+  "traffic-drop": "Traffic-drop diagnosis",
+  "dns-whois": "DNS / WHOIS",
+  "youtube-audit": "YouTube audit",
+  "intent-classifier": "Search intent classifier",
+  "keyword-difficulty": "Keyword difficulty",
+  "content-grader": "Content grader",
 };
