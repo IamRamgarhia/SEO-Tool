@@ -7,10 +7,13 @@ import {
   auditIssues,
   backlinks,
   clients,
+  guestPostDrafts,
   keywordRankings,
   keywords,
   monitoredPages,
   pageChanges,
+  resourceSubmissions,
+  seoResources,
   tasks,
 } from "@/db/schema";
 import { getSetting } from "./settings-store";
@@ -336,6 +339,49 @@ export async function generateReportPdf(
       ),
     )
     .orderBy(desc(backlinks.placedAt));
+
+  // Tracker submissions that went live in the period — links the user
+  // built via the per-client backlink hub.
+  const submissionsLiveThisPeriod = await db
+    .select({
+      id: resourceSubmissions.id,
+      domain: seoResources.domain,
+      submittedUrl: resourceSubmissions.submittedUrl,
+      category: seoResources.category,
+      da: seoResources.da,
+      submittedAt: resourceSubmissions.submittedAt,
+    })
+    .from(resourceSubmissions)
+    .leftJoin(seoResources, eq(resourceSubmissions.resourceId, seoResources.id))
+    .where(
+      and(
+        eq(resourceSubmissions.clientId, clientId),
+        eq(resourceSubmissions.status, "live"),
+        gte(resourceSubmissions.submittedAt, periodCutoff),
+      ),
+    )
+    .orderBy(desc(resourceSubmissions.submittedAt));
+
+  // AI-written guest posts published in the period.
+  const guestPostsPublishedThisPeriod = await db
+    .select({
+      id: guestPostDrafts.id,
+      siteName: guestPostDrafts.siteName,
+      siteDomain: guestPostDrafts.siteDomain,
+      topic: guestPostDrafts.topic,
+      targetKeyword: guestPostDrafts.targetKeyword,
+      liveUrl: guestPostDrafts.liveUrl,
+      publishedAt: guestPostDrafts.publishedAt,
+    })
+    .from(guestPostDrafts)
+    .where(
+      and(
+        eq(guestPostDrafts.clientId, clientId),
+        eq(guestPostDrafts.status, "published"),
+        gte(guestPostDrafts.publishedAt, periodCutoff),
+      ),
+    )
+    .orderBy(desc(guestPostDrafts.publishedAt));
 
   // Rank movement: per keyword, compare latest checked rank vs the rank
   // 30+ days ago. Only surface keywords with meaningful change (≥3 spots).
@@ -934,6 +980,73 @@ export async function generateReportPdf(
         }
         doc.moveDown(0.3);
         doc.fontSize(10).fillColor(palette.ink);
+      }
+      doc.moveDown(1);
+    }
+
+    // === Tracker submissions that went live ===
+    if (submissionsLiveThisPeriod.length > 0) {
+      drawSectionHeading(doc, "Backlink hub — links marked live");
+      doc
+        .fillColor(palette.ink)
+        .font("Helvetica-Bold")
+        .fontSize(10)
+        .text(
+          `${submissionsLiveThisPeriod.length} link${submissionsLiveThisPeriod.length === 1 ? "" : "s"} from your tracker`,
+        );
+      doc.moveDown(0.4);
+      for (const s of submissionsLiveThisPeriod) {
+        ensureSpace(doc, 22);
+        doc.font("Helvetica").fontSize(10).text(`• ${s.domain ?? "(unknown)"}`);
+        const meta: string[] = [];
+        if (s.category) meta.push(s.category.replace(/-/g, " "));
+        if (s.da !== null && s.da !== undefined) meta.push(`DA ${s.da}`);
+        if (s.submittedAt)
+          meta.push(new Date(s.submittedAt).toLocaleDateString());
+        if (meta.length > 0) {
+          doc
+            .font("Helvetica")
+            .fillColor(palette.mute)
+            .fontSize(9)
+            .text(meta.join(" · "));
+          doc.fillColor(palette.ink);
+        }
+        doc.moveDown(0.2);
+      }
+      doc.moveDown(1);
+    }
+
+    // === Guest posts published ===
+    if (guestPostsPublishedThisPeriod.length > 0) {
+      drawSectionHeading(doc, "Guest posts published");
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(10)
+        .fillColor(palette.ink)
+        .text(
+          `${guestPostsPublishedThisPeriod.length} guest post${guestPostsPublishedThisPeriod.length === 1 ? "" : "s"} live`,
+        );
+      doc.moveDown(0.4);
+      for (const g of guestPostsPublishedThisPeriod) {
+        ensureSpace(doc, 28);
+        doc
+          .font("Helvetica-Bold")
+          .fontSize(10)
+          .fillColor(palette.ink)
+          .text(`• ${g.siteName} — ${g.topic}`);
+        const meta: string[] = [];
+        if (g.targetKeyword) meta.push(`target: ${g.targetKeyword}`);
+        if (g.publishedAt)
+          meta.push(new Date(g.publishedAt).toLocaleDateString());
+        if (meta.length > 0) {
+          doc
+            .font("Helvetica")
+            .fillColor(palette.mute)
+            .fontSize(9)
+            .text(meta.join(" · "));
+          doc.fillColor(palette.ink);
+        }
+        doc.moveDown(0.2);
       }
       doc.moveDown(1);
     }

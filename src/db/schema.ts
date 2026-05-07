@@ -1304,3 +1304,44 @@ export const notFoundLog = sqliteTable("not_found_log", {
 });
 export type NotFoundLog = typeof notFoundLog.$inferSelect;
 export type NewNotFoundLog = typeof notFoundLog.$inferInsert;
+
+/**
+ * AI-written guest post drafts. Tied to a client and a curated guest-post
+ * site (see `lib/guest-post-sites.ts`). The lifecycle:
+ *
+ *   draft  → pitched → accepted → published → live
+ *                   ↘ rejected
+ *
+ * `liveUrl` is filled when the post goes live; `publishedAt` is the
+ * timestamp that flows into monthly reports under "Links built this period".
+ */
+export const guestPostDrafts = sqliteTable("guest_post_drafts", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  clientId: integer("client_id")
+    .notNull()
+    .references(() => clients.id, { onDelete: "cascade" }),
+  /** Slug from `GUEST_POST_SITES`. Free text for forward-compat. */
+  siteId: text("site_id").notNull(),
+  siteName: text("site_name").notNull(),
+  siteDomain: text("site_domain").notNull(),
+  topic: text("topic").notNull(),
+  targetKeyword: text("target_keyword").notNull(),
+  supportingKeywords: text("supporting_keywords"),
+  authorName: text("author_name"),
+  authorBio: text("author_bio"),
+  markdown: text("markdown").notNull(),
+  qaIssues: text("qa_issues", { mode: "json" }).$type<
+    { severity: string; message: string }[]
+  >(),
+  status: text("status", {
+    enum: ["draft", "pitched", "accepted", "published", "rejected"],
+  })
+    .notNull()
+    .default("draft"),
+  liveUrl: text("live_url"),
+  publishedAt: integer("published_at", { mode: "timestamp" }),
+  pitchedAt: integer("pitched_at", { mode: "timestamp" }),
+  ...timestamps,
+});
+export type GuestPostDraft = typeof guestPostDrafts.$inferSelect;
+export type NewGuestPostDraft = typeof guestPostDrafts.$inferInsert;

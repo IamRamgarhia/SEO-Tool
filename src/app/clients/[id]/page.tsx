@@ -11,6 +11,7 @@ import {
   ExternalLink,
   FileDown,
   Layers,
+  Link2,
   Pencil,
   Play,
   RefreshCw,
@@ -307,6 +308,28 @@ export default async function ClientDetailPage({
               >
                 <Wand2 className="size-3.5" />
                 AI blog
+              </Link>
+              <Link
+                href={`/link-building/c/${client.id}`}
+                className={buttonVariants({
+                  variant: "outline",
+                  className: "border-emerald-500/30 bg-emerald-500/10",
+                })}
+                title="AI-matched backlink prospects + tracker for this client"
+              >
+                <Link2 className="size-3.5" />
+                Backlinks
+              </Link>
+              <Link
+                href={`/guest-posts/c/${client.id}`}
+                className={buttonVariants({
+                  variant: "outline",
+                  className: "border-amber-500/30 bg-amber-500/10",
+                })}
+                title="AI guest post composer tuned per platform"
+              >
+                <Wand2 className="size-3.5" />
+                Guest posts
               </Link>
               <Link
                 href={`/clients/${client.id}/onboarding`}
