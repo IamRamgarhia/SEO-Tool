@@ -617,6 +617,39 @@ const tools = [
       "Timeline of every Google algorithm update with confirmed dates. Correlate against your traffic drops.",
     accent: "violet",
   },
+  // 2026 SEO gap-closers
+  {
+    href: "/tools/person-schema",
+    icon: ShieldCheck,
+    title: "Person schema generator (E-E-A-T) ⭐",
+    description:
+      "Person JSON-LD is the top E-E-A-T signal in 2026 — Google's AI Mode uses it for entity verification. Fill in author details, get a copy-paste <script>.",
+    accent: "violet",
+  },
+  {
+    href: "/tools/aio-passage",
+    icon: Sparkles,
+    title: "AI Overview passage optimizer ⭐",
+    description:
+      "AIs cite 134-167 word self-contained passages. We split your draft, score each chunk on length / self-containment / Q→A / specifics / citations, and AI-rewrite the weak ones.",
+    accent: "violet",
+  },
+  {
+    href: "/tools/reputation-abuse-risk",
+    icon: ShieldCheck,
+    title: "Site reputation abuse risk scan",
+    description:
+      "Google now algorithmically demotes sections 'starkly different' from the main site. Crawl + group by path + score topical coherence so you don't lose authority.",
+    accent: "rose",
+  },
+  {
+    href: "/tools/ai-citation-tactics",
+    icon: Sparkles,
+    title: "AI citation tactics (per platform)",
+    description:
+      "Only 11% of cited domains overlap between ChatGPT and Perplexity. Niche-specific priority + concrete tactics for each platform: ChatGPT, Perplexity, Claude, Gemini, AI Overviews.",
+    accent: "violet",
+  },
 ];
 
 const accentMap: Record<string, string> = {

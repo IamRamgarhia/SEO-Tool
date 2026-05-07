@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { generateSchema, type SchemaType } from "./actions";
+import { getSchemaAdvisory } from "@/lib/schema-deprecations-2026";
 
 const TYPES: { id: SchemaType; label: string; description: string }[] = [
   {
@@ -134,6 +135,8 @@ export default function SchemaGeneratorPage() {
           </div>
         </div>
 
+        <SchemaAdvisoryBanner type={type} />
+
         <div className="space-y-1.5">
           <Label htmlFor="surl">Page URL (we auto-extract metadata)</Label>
           <Input
@@ -181,6 +184,7 @@ export default function SchemaGeneratorPage() {
 
       {jsonld && (
         <section className="glass-apple relative overflow-hidden rounded-2xl">
+          <SchemaAdvisoryBanner type={type} compact />
           <header className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
             <h2 className="flex items-center gap-2 text-base font-semibold">
               <CheckCircle2 className="size-4 text-emerald-300" />
@@ -216,6 +220,50 @@ export default function SchemaGeneratorPage() {
             </div>
           </div>
         </section>
+      )}
+    </div>
+  );
+}
+
+function SchemaAdvisoryBanner({
+  type,
+  compact = false,
+}: {
+  type: SchemaType;
+  compact?: boolean;
+}) {
+  const advisory = getSchemaAdvisory(type);
+  if (advisory.status === "ok") {
+    if (compact) return null;
+    return (
+      <div className="rounded-md border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-xs">
+        <p className="font-medium text-emerald-300">
+          ✓ {advisory.headline}
+        </p>
+        {advisory.recommendation && (
+          <p className="mt-1 text-muted-foreground">
+            {advisory.recommendation}
+          </p>
+        )}
+      </div>
+    );
+  }
+  const tone =
+    advisory.status === "deprecated"
+      ? "border-rose-500/30 bg-rose-500/5 text-rose-200"
+      : "border-amber-500/30 bg-amber-500/5 text-amber-200";
+  return (
+    <div className={`${compact ? "border-b border-white/[0.06] px-5 py-3" : "rounded-md border px-3 py-2"} ${tone} text-xs`}>
+      <p className="font-medium">
+        {advisory.status === "deprecated" ? "⚠ Deprecated:" : "⚠ Reduced display:"}{" "}
+        {advisory.headline}
+      </p>
+      <p className="mt-1 opacity-80">{advisory.reason}</p>
+      {advisory.recommendation && (
+        <p className="mt-1.5 opacity-90">
+          <strong className="font-medium">Recommendation:</strong>{" "}
+          {advisory.recommendation}
+        </p>
       )}
     </div>
   );
