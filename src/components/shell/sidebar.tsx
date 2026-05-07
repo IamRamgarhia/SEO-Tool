@@ -56,6 +56,8 @@ const groups: { title: string; items: Section[] }[] = [
     items: [
       { href: "/", label: "Dashboard", icon: LayoutDashboard },
       { href: "/morning", label: "Morning briefing", icon: Activity },
+      { href: "/digest", label: "Weekly digest", icon: Send },
+      { href: "/seo-chat", label: "SEO Chat", icon: Bot },
       { href: "/grader", label: "Instant audit", icon: Sparkles },
       { href: "/import", label: "Import screenshot", icon: ScanText },
       { href: "/capture", label: "Universal capture", icon: Magnet },

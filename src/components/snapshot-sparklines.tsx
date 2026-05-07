@@ -2,6 +2,7 @@ import { db } from "@/db/client";
 import { clientMetricSnapshots } from "@/db/schema";
 import { asc, eq } from "drizzle-orm";
 import { TrendingDown, TrendingUp } from "lucide-react";
+import { ALGO_UPDATES } from "@/lib/algorithm-updates";
 
 /**
  * Server component that pulls every snapshot for a client (sorted oldest
@@ -20,6 +21,7 @@ export async function SnapshotSparklines({ clientId }: { clientId: number }) {
     return null;
   }
 
+  const dates = snapshots.map((s) => s.capturedAt);
   const series = [
     {
       label: "Organic clicks (28d)",
@@ -43,6 +45,15 @@ export async function SnapshotSparklines({ clientId }: { clientId: number }) {
     },
   ];
 
+  // Overlapping algo-update windows for annotation
+  const minTs = Math.min(...dates.map((d) => d.getTime()));
+  const maxTs = Math.max(...dates.map((d) => d.getTime()));
+  const algoOverlaps = ALGO_UPDATES.filter((u) => {
+    const start = new Date(u.date).getTime();
+    const end = new Date(u.endDate ?? u.date).getTime();
+    return start <= maxTs && end >= minTs;
+  });
+
   return (
     <section className="glass-apple relative overflow-hidden rounded-2xl">
       <header className="border-b border-white/[0.06] px-5 py-3">
@@ -55,7 +66,7 @@ export async function SnapshotSparklines({ clientId }: { clientId: number }) {
       </header>
       <div className="grid gap-3 p-5 sm:grid-cols-2">
         {series.map((s) => (
-          <Sparkline key={s.label} label={s.label} values={s.values} tone={s.tone} />
+          <Sparkline key={s.label} label={s.label} values={s.values} dates={dates} tone={s.tone} algoOverlaps={algoOverlaps} />
         ))}
       </div>
     </section>
@@ -65,11 +76,15 @@ export async function SnapshotSparklines({ clientId }: { clientId: number }) {
 function Sparkline({
   label,
   values,
+  dates,
   tone,
+  algoOverlaps,
 }: {
   label: string;
   values: (number | null)[];
+  dates: Date[];
   tone: string;
+  algoOverlaps: { date: string; endDate?: string; name: string; type: string }[];
 }) {
   const present = values
     .map((v, i) => ({ v, i }))
@@ -132,6 +147,38 @@ function Sparkline({
           viewBox={`0 0 ${W} ${H}`}
           className="block"
         >
+          {/* Algo-update windows behind the line */}
+          {(() => {
+            if (present.length < 2 || dates.length < 2) return null;
+            const minTs = dates[0].getTime();
+            const maxTs = dates[dates.length - 1].getTime();
+            const span = Math.max(1, maxTs - minTs);
+            return algoOverlaps.map((u) => {
+              const us = Math.max(minTs, new Date(u.date).getTime());
+              const ue = Math.min(maxTs, new Date(u.endDate ?? u.date).getTime());
+              const x1 = ((us - minTs) / span) * W;
+              const x2 = ((ue - minTs) / span) * W;
+              const tone =
+                u.type === "spam"
+                  ? "#f43f5e"
+                  : u.type === "core"
+                    ? "#f59e0b"
+                    : "#a78bfa";
+              return (
+                <rect
+                  key={`${u.name}-${u.date}`}
+                  x={x1}
+                  y={0}
+                  width={Math.max(2, x2 - x1)}
+                  height={H}
+                  fill={tone}
+                  opacity={0.18}
+                >
+                  <title>{`${u.name} (${u.date}${u.endDate ? ` → ${u.endDate}` : ""})`}</title>
+                </rect>
+              );
+            });
+          })()}
           <path
             d={path}
             fill="none"
