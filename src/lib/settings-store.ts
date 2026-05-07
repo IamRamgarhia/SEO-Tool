@@ -70,7 +70,10 @@ export type SettingKey =
   // "host:port"; rotated round-robin per launched context. Empty = direct.
   | "browser.max_concurrency"
   | "browser.proxies"
-  | "browser.stealth_enabled";
+  | "browser.stealth_enabled"
+  // Cookie jar for logged-in scraping. Stored as JSON array of
+  // { domain, name, value, path?, expires?, secure?, httpOnly? }.
+  | "browser.cookies";
 
 export async function getSetting<T = unknown>(
   key: SettingKey,

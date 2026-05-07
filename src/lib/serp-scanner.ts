@@ -1,4 +1,5 @@
 import { withBrowserContext } from "./browser-pool";
+import { captchaUserMessage, detectCaptcha } from "./captcha-detect";
 
 /**
  * Scrapes a Google SERP for everything an SEO actually wants to see:
@@ -86,15 +87,11 @@ export async function scanSerp(opts: SerpScanInput): Promise<SerpScanOutput> {
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
     await page.waitForTimeout(900);
 
-    // Block detection
-    const bodyText = (await page.textContent("body")) ?? "";
-    if (
-      /unusual traffic|verify you're not a robot|please enable cookies/i.test(
-        bodyText.slice(0, 2000),
-      )
-    ) {
-      out.error =
-        "Google blocked the scan (captcha / consent). Try again later or rotate IP.";
+    // Block detection (shared across all scrapers)
+    const html = await page.content();
+    const cap = detectCaptcha(html);
+    if (cap.blocked) {
+      out.error = captchaUserMessage(cap.reason);
       return out;
     }
 

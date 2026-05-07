@@ -1091,3 +1091,59 @@ export type AiFeedback = typeof aiFeedback.$inferSelect;
 export type NewAiFeedback = typeof aiFeedback.$inferInsert;
 export type AiPreference = typeof aiPreferences.$inferSelect;
 export type NewAiPreference = typeof aiPreferences.$inferInsert;
+
+// =============== Public API keys ===============
+
+export const apiKeys = sqliteTable("api_keys", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  /** sha256 of the full key — only the prefix is shown to the user after generation. */
+  keyHash: text("key_hash").notNull().unique(),
+  /** First 8 chars of the key for display ("seo_live_a3f9..."). */
+  keyPrefix: text("key_prefix").notNull(),
+  scopes: text("scopes", { mode: "json" })
+    .$type<("read" | "write" | "admin")[]>()
+    .notNull()
+    .default(sql`('["read"]')`),
+  lastUsedAt: integer("last_used_at", { mode: "timestamp" }),
+  expiresAt: integer("expires_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  revokedAt: integer("revoked_at", { mode: "timestamp" }),
+});
+export type ApiKey = typeof apiKeys.$inferSelect;
+export type NewApiKey = typeof apiKeys.$inferInsert;
+
+// =============== Inbound webhooks ===============
+
+export const inboundWebhooks = sqliteTable("inbound_webhooks", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  token: text("token").notNull().unique(),
+  name: text("name").notNull(),
+  /** "generic" / "github" / "linear" / "google_alerts" / "custom" — used for parsing. */
+  eventType: text("event_type").notNull().default("generic"),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  lastReceivedAt: integer("last_received_at", { mode: "timestamp" }),
+  receiveCount: integer("receive_count").notNull().default(0),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+export type InboundWebhook = typeof inboundWebhooks.$inferSelect;
+export type NewInboundWebhook = typeof inboundWebhooks.$inferInsert;
+
+export const inboundWebhookEvents = sqliteTable("inbound_webhook_events", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  webhookId: integer("webhook_id")
+    .notNull()
+    .references(() => inboundWebhooks.id, { onDelete: "cascade" }),
+  payload: text("payload", { mode: "json" }).$type<unknown>().notNull(),
+  headers: text("headers", { mode: "json" }).$type<Record<string, string>>(),
+  sourceIp: text("source_ip"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+export type InboundWebhookEvent = typeof inboundWebhookEvents.$inferSelect;
+export type NewInboundWebhookEvent = typeof inboundWebhookEvents.$inferInsert;

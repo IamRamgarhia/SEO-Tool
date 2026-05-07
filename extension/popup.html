@@ -165,10 +165,14 @@
         <button id="track-changes">Watch changes</button>
         <button id="audit-now" class="primary">Audit now</button>
       </div>
+      <div class="row">
+        <button id="capture-page" class="primary">Capture to SEO Tool ↑</button>
+      </div>
     </div>
 
-    <button class="config-toggle" id="config-toggle">⚙ App URL</button>
+    <button class="config-toggle" id="config-toggle">⚙ Settings</button>
     <div class="config" id="config-panel">
+      <div class="label">App URL</div>
       <input
         id="app-url"
         type="url"
@@ -176,8 +180,15 @@
         value="http://localhost:3000"
         placeholder="http://localhost:3000"
       />
+      <div class="label" style="margin-top: 6px">API key (Settings → Public API keys)</div>
+      <input
+        id="api-key"
+        type="password"
+        class="input"
+        placeholder="seo_live_..."
+      />
       <div class="footer">
-        Saved automatically. Default works for the standard local install.
+        Saved automatically. Add an API key to use direct capture.
       </div>
     </div>
 

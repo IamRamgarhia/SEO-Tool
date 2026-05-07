@@ -1,21 +1,39 @@
 "use client";
 
-import { useActionState } from "react";
-import { Loader2, Save } from "lucide-react";
+import { useActionState, useState, useTransition } from "react";
+import { CheckCircle2, Loader2, Save, XCircle, Zap } from "lucide-react";
 import {
   saveBrowserSettings,
+  testProxies,
   type BrowserSettingsState,
+  type ProxyHealthState,
 } from "./browser-actions";
 
 export function BrowserForm({
   initial,
 }: {
-  initial: { maxConcurrency: number; proxies: string; stealth: boolean };
+  initial: {
+    maxConcurrency: number;
+    proxies: string;
+    stealth: boolean;
+    cookies: string;
+    cookieCount: number;
+  };
 }) {
   const [state, formAction, pending] = useActionState<
     BrowserSettingsState | null,
     FormData
   >(saveBrowserSettings, null);
+  const [health, setHealth] = useState<ProxyHealthState | null>(null);
+  const [testing, startTest] = useTransition();
+
+  function runTest() {
+    setHealth(null);
+    startTest(async () => {
+      const r = await testProxies();
+      setHealth(r);
+    });
+  }
 
   return (
     <form action={formAction} className="space-y-4">
@@ -75,7 +93,28 @@ export function BrowserForm({
         </span>
       </label>
 
-      <div className="flex items-center gap-3">
+      <label className="block space-y-1 text-xs">
+        <span className="text-muted-foreground">
+          Cookie jar (logged-in scrapes — {initial.cookieCount} cookie
+          {initial.cookieCount === 1 ? "" : "s"} stored)
+        </span>
+        <textarea
+          name="cookies"
+          defaultValue={initial.cookies}
+          rows={4}
+          placeholder={
+            "Format A (TAB-separated):\nexample.com\tsession_id\tabc123\n\nOR Format B (header-style):\nexample.com: session_id=abc123; csrf=xyz"
+          }
+          className="w-full rounded-md border border-white/10 bg-card/60 px-3 py-2 font-mono text-xs focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/40"
+        />
+        <span className="block text-[10px] text-muted-foreground">
+          Used for logged-in scraping (paywalled sites, staging behind auth,
+          GSC alternative views). Cookies inject into every browser context.
+          Leave empty if not needed.
+        </span>
+      </label>
+
+      <div className="flex flex-wrap items-center gap-3">
         <button
           type="submit"
           disabled={pending}
@@ -93,6 +132,24 @@ export function BrowserForm({
             </>
           )}
         </button>
+        <button
+          type="button"
+          onClick={runTest}
+          disabled={testing}
+          className="inline-flex h-9 items-center rounded-md bg-cyan-500/15 px-4 text-xs font-medium text-cyan-300 ring-1 ring-inset ring-cyan-500/30 hover:bg-cyan-500/25 disabled:opacity-50"
+        >
+          {testing ? (
+            <>
+              <Loader2 className="mr-2 size-3 animate-spin" />
+              Testing proxies…
+            </>
+          ) : (
+            <>
+              <Zap className="mr-2 size-3" />
+              Test proxies
+            </>
+          )}
+        </button>
         {state?.ok && state.message && (
           <span className="text-xs text-emerald-300">{state.message}</span>
         )}
@@ -100,6 +157,46 @@ export function BrowserForm({
           <span className="text-xs text-rose-300">{state.error}</span>
         )}
       </div>
+
+      {health && health.ok && health.results.length === 0 && (
+        <p className="text-xs text-muted-foreground">
+          No proxies configured. Add one above and save first.
+        </p>
+      )}
+      {health && health.ok && health.results.length > 0 && (
+        <ul className="space-y-1 text-xs">
+          {health.results.map((r) => (
+            <li
+              key={r.raw}
+              className={`flex items-center justify-between rounded-md px-3 py-2 ring-1 ring-inset ${
+                r.ok
+                  ? "bg-emerald-500/5 ring-emerald-500/20"
+                  : "bg-rose-500/5 ring-rose-500/20"
+              }`}
+            >
+              <code className="break-all">{r.raw}</code>
+              <span
+                className={`flex shrink-0 items-center gap-1 ${r.ok ? "text-emerald-300" : "text-rose-300"}`}
+              >
+                {r.ok ? (
+                  <>
+                    <CheckCircle2 className="size-3" />
+                    {r.latencyMs}ms
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="size-3" />
+                    {r.error?.slice(0, 60) ?? "fail"}
+                  </>
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {health && !health.ok && (
+        <p className="text-xs text-rose-300">{health.error}</p>
+      )}
     </form>
   );
 }

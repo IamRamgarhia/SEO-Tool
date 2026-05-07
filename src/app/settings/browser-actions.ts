@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getSetting, setSetting } from "@/lib/settings-store";
-import { closeBrowser } from "@/lib/browser-pool";
+import { closeBrowser, checkProxyHealth, type ProxyHealth } from "@/lib/browser-pool";
 
 export type BrowserSettingsState =
   | { ok: true; message?: string }
@@ -25,9 +25,16 @@ export async function saveBrowserSettings(
     .replace(/\r/g, "");
   const stealth = formData.get("stealth") === "on";
 
+  // Cookies: parse "domain TAB name TAB value" lines OR raw cookie-header pairs
+  const cookiesRaw = String(formData.get("cookies") ?? "")
+    .trim()
+    .replace(/\r/g, "");
+  const cookies = parseCookieLines(cookiesRaw);
+
   await setSetting("browser.max_concurrency", conc);
   await setSetting("browser.proxies", proxiesRaw);
   await setSetting("browser.stealth_enabled", stealth);
+  await setSetting("browser.cookies", cookies);
 
   // Force-close the browser so the next launch picks up new settings.
   await closeBrowser();
@@ -36,11 +43,70 @@ export async function saveBrowserSettings(
   return { ok: true, message: "Saved. Browser will relaunch on next use." };
 }
 
+type StoredCookie = {
+  domain: string;
+  name: string;
+  value: string;
+  path?: string;
+};
+
+function parseCookieLines(raw: string): StoredCookie[] {
+  if (!raw) return [];
+  const out: StoredCookie[] = [];
+  for (const line of raw.split(/\n/)) {
+    const t = line.trim();
+    if (!t) continue;
+    // Format A: domain<TAB>name<TAB>value
+    const tabParts = t.split(/\t+/);
+    if (tabParts.length >= 3) {
+      out.push({
+        domain: tabParts[0].replace(/^\./, ""),
+        name: tabParts[1],
+        value: tabParts[2],
+      });
+      continue;
+    }
+    // Format B: "domain.com: name=value; name2=value2"
+    const m = t.match(/^([^:]+):\s*(.+)$/);
+    if (m) {
+      const domain = m[1].trim().replace(/^\./, "");
+      for (const pair of m[2].split(/;/)) {
+        const eq = pair.indexOf("=");
+        if (eq <= 0) continue;
+        const name = pair.slice(0, eq).trim();
+        const value = pair.slice(eq + 1).trim();
+        if (name && value) out.push({ domain, name, value });
+      }
+    }
+  }
+  return out;
+}
+
+export type ProxyHealthState =
+  | { ok: true; results: ProxyHealth[] }
+  | { ok: false; error: string };
+
+export async function testProxies(): Promise<ProxyHealthState> {
+  try {
+    const results = await checkProxyHealth();
+    return { ok: true, results };
+  } catch (err) {
+    return { ok: false, error: (err as Error).message };
+  }
+}
+
 export async function loadBrowserSettings() {
+  const cookies =
+    (await getSetting<StoredCookie[]>("browser.cookies")) ?? [];
+  const cookiesText = cookies
+    .map((c) => `${c.domain}\t${c.name}\t${c.value}`)
+    .join("\n");
   return {
     maxConcurrency:
       (await getSetting<number>("browser.max_concurrency")) ?? 4,
     proxies: (await getSetting<string>("browser.proxies")) ?? "",
     stealth: ((await getSetting<boolean>("browser.stealth_enabled")) ?? true),
+    cookies: cookiesText,
+    cookieCount: cookies.length,
   };
 }

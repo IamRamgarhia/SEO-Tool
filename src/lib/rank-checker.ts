@@ -1,5 +1,6 @@
 import { type Page } from "playwright";
 import { withBrowserContext } from "./browser-pool";
+import { captchaUserMessage, detectCaptcha } from "./captcha-detect";
 
 export type RankCheckResult = {
   query: string;
@@ -68,13 +69,10 @@ async function checkOnGoogle(
     // small delay so client-side hydration has a chance to render
     await page.waitForTimeout(500);
 
-    // Detect "unusual traffic" / consent / captcha pages
-    const bodyText = (await page.textContent("body")) ?? "";
-    if (
-      /unusual traffic|verify you're not a robot|please enable cookies/i.test(
-        bodyText.slice(0, 2000),
-      )
-    ) {
+    // Detect captcha / consent / unusual-traffic
+    const html = await page.content();
+    const cap = detectCaptcha(html);
+    if (cap.blocked) {
       return {
         query,
         domain,
@@ -83,7 +81,7 @@ async function checkOnGoogle(
         url: null,
         checkedAt,
         resultsScanned: 0,
-        error: "Google blocked the headless browser (captcha or consent page).",
+        error: captchaUserMessage(cap.reason),
       };
     }
 

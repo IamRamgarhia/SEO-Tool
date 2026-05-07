@@ -1,4 +1,5 @@
 import { withBrowserContext } from "./browser-pool";
+import { captchaUserMessage, detectCaptcha } from "./captcha-detect";
 
 /**
  * Local rank tracker — runs a rank check with city-level location intent
@@ -68,13 +69,10 @@ export async function checkLocalRank(opts: {
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
     await page.waitForTimeout(700);
 
-    const bodyText = (await page.textContent("body")) ?? "";
-    if (
-      /unusual traffic|verify you're not a robot|please enable cookies/i.test(
-        bodyText.slice(0, 2000),
-      )
-    ) {
-      out.error = "Google blocked the headless browser (captcha or consent).";
+    const html = await page.content();
+    const cap = detectCaptcha(html);
+    if (cap.blocked) {
+      out.error = captchaUserMessage(cap.reason);
       return out;
     }
 

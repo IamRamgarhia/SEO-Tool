@@ -37,6 +37,11 @@ import { ActiveProviderCard } from "./active-provider-card";
 import { CreditSaverForm } from "./credit-saver-form";
 import { BrowserForm } from "./browser-form";
 import { loadBrowserSettings } from "./browser-actions";
+import { ApiKeyManager } from "./api-keys/manager";
+import { db as dbClient } from "@/db/client";
+import { apiKeys, inboundWebhooks } from "@/db/schema";
+import { desc as descSql } from "drizzle-orm";
+import { InboundWebhooksManager } from "./inbound-webhooks/manager";
 
 export default async function SettingsPage() {
   const [{ value: clientCount }] = await db
@@ -77,6 +82,17 @@ export default async function SettingsPage() {
   const smtpSecure = await getSetting<string>("smtp.secure");
   const smtpHasPassword = Boolean(await getSetting<string>("smtp.password"));
   const browserSettings = await loadBrowserSettings();
+
+  const apiKeyRows = await dbClient
+    .select()
+    .from(apiKeys)
+    .orderBy(descSql(apiKeys.createdAt))
+    .limit(50);
+  const inboundWebhookRows = await dbClient
+    .select()
+    .from(inboundWebhooks)
+    .orderBy(descSql(inboundWebhooks.createdAt))
+    .limit(50);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -308,6 +324,54 @@ export default async function SettingsPage() {
         </header>
         <div className="relative p-5">
           <BrowserForm initial={browserSettings} />
+        </div>
+      </section>
+
+      {/* Public API keys */}
+      <section className="relative overflow-hidden rounded-2xl border border-white/5 bg-card/40 backdrop-blur-md">
+        <div className="pointer-events-none absolute -right-12 -top-12 size-40 rounded-full bg-violet-500/15 blur-3xl" />
+        <header className="relative border-b border-white/5 px-5 py-4">
+          <h2 className="flex items-center gap-2 text-base font-semibold">
+            <Key className="size-4 text-violet-300" />
+            Public API keys
+          </h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Bearer-token auth for{" "}
+            <code className="rounded bg-white/5 px-1 py-0.5">/api/v1/*</code>{" "}
+            endpoints. Use these in n8n, Make, Zapier, your own scripts.
+          </p>
+        </header>
+        <div className="relative p-5">
+          <ApiKeyManager
+            initial={apiKeyRows.map((k) => ({
+              id: k.id,
+              name: k.name,
+              keyPrefix: k.keyPrefix,
+              scopes: k.scopes,
+              lastUsedAt: k.lastUsedAt,
+              createdAt: k.createdAt,
+              revokedAt: k.revokedAt,
+            }))}
+          />
+        </div>
+      </section>
+
+      {/* Inbound webhooks */}
+      <section className="relative overflow-hidden rounded-2xl border border-white/5 bg-card/40 backdrop-blur-md">
+        <div className="pointer-events-none absolute -right-12 -top-12 size-40 rounded-full bg-cyan-500/15 blur-3xl" />
+        <header className="relative border-b border-white/5 px-5 py-4">
+          <h2 className="flex items-center gap-2 text-base font-semibold">
+            <Plug className="size-4 text-cyan-300" />
+            Inbound webhooks
+          </h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Receive events from external systems — GitHub, Linear, Google
+            Alerts, custom integrations. Each webhook gets a unique URL +
+            stored event log you can replay or query.
+          </p>
+        </header>
+        <div className="relative p-5">
+          <InboundWebhooksManager initial={inboundWebhookRows} />
         </div>
       </section>
 

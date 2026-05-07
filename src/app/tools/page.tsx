@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import {
   Activity,
+  Bot,
   Camera,
   Code2,
   Compass,
@@ -20,10 +21,12 @@ import {
   Network,
   RefreshCw,
   ScanText,
+  Send,
   ServerCog,
   ShieldCheck,
   Sparkles,
   Stethoscope,
+  TrendingDown,
   Video,
   Wand2,
   Wrench,
@@ -39,6 +42,46 @@ const tools = [
     description:
       "One URL → audit + robots + hreflang + security + Core Web Vitals + image audit + redirect chain in parallel. Save snapshots to compare before / after.",
     accent: "violet",
+  },
+  {
+    href: "/tools/browser-agent",
+    icon: Bot,
+    title: "Browser agent (goal-driven)",
+    description:
+      "Plain-English goal + a starting URL. Headless Chrome reads the page, decides the next step, and narrates each move with a screenshot. Replaces 'I need an API for that site' with browser automation.",
+    accent: "violet",
+  },
+  {
+    href: "/tools/trending",
+    icon: Flame,
+    title: "Trending content ideas",
+    description:
+      "Mines Google Trends rising queries, autocomplete a-z expansion, People Also Ask, related searches, Reddit threads. AI synthesises 10-15 publish-ready ideas.",
+    accent: "amber",
+  },
+  {
+    href: "/tools/traffic-drop",
+    icon: TrendingDown,
+    title: "Why did my traffic drop?",
+    description:
+      "Pulls last 28 vs prev 28 days from GSC. Diffs queries + pages, cross-references curated Google algorithm-update timeline, AI ranks the most likely cause.",
+    accent: "rose",
+  },
+  {
+    href: "/tools/ai-schema",
+    icon: Code2,
+    title: "AI schema generator (from URL)",
+    description:
+      "Paste any URL — AI fetches, classifies content type, emits valid JSON-LD grounded in actual on-page content. Won't invent fields that aren't there.",
+    accent: "cyan",
+  },
+  {
+    href: "/tools/outreach-personalize",
+    icon: Send,
+    title: "Outreach personalizer",
+    description:
+      "Paste prospect URL + your generic template. AI mines their site for recent posts and topical signals, rewrites your opener with a specific reference. 2% → 15% reply rates.",
+    accent: "rose",
   },
   {
     href: "/tools/render",

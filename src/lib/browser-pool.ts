@@ -59,6 +59,28 @@ async function isStealthEnabled(): Promise<boolean> {
   return raw !== false; // default ON
 }
 
+export type StoredCookie = {
+  domain: string;
+  name: string;
+  value: string;
+  path?: string;
+  expires?: number;
+  secure?: boolean;
+  httpOnly?: boolean;
+};
+
+async function getStoredCookies(): Promise<StoredCookie[]> {
+  const raw = await getSetting<StoredCookie[]>("browser.cookies");
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(
+    (c) =>
+      c &&
+      typeof c.domain === "string" &&
+      typeof c.name === "string" &&
+      typeof c.value === "string",
+  );
+}
+
 async function acquire(): Promise<void> {
   const max = await getMaxConcurrency();
   if (active < max) {
@@ -177,6 +199,27 @@ export async function withBrowserContext<T>(
       ...(proxy ? { proxy } : {}),
     });
 
+    // Inject cookies if any are stored (for logged-in scrapes / paywalls)
+    const cookies = await getStoredCookies();
+    if (cookies.length > 0) {
+      try {
+        await context.addCookies(
+          cookies.map((c) => ({
+            name: c.name,
+            value: c.value,
+            domain: c.domain,
+            path: c.path ?? "/",
+            ...(c.expires ? { expires: c.expires } : {}),
+            secure: c.secure ?? true,
+            httpOnly: c.httpOnly ?? false,
+            sameSite: "Lax" as const,
+          })),
+        );
+      } catch {
+        // bad cookie shape — skip silently rather than blocking the call
+      }
+    }
+
     if (stealth) {
       // Lightweight stealth: hide the things headless flags trip on.
       await context.addInitScript(() => {
@@ -238,6 +281,67 @@ export async function withBrowserPage<T>(
       await page.close().catch(() => {});
     }
   }, opts);
+}
+
+/**
+ * Health-check every configured proxy by making a quick HEAD request to
+ * a tiny known-good URL through it. Returns per-proxy ok/latency/error
+ * for the Settings UI.
+ */
+export type ProxyHealth = {
+  raw: string;
+  ok: boolean;
+  latencyMs: number | null;
+  error: string | null;
+};
+
+export async function checkProxyHealth(): Promise<ProxyHealth[]> {
+  const proxies = await getProxies();
+  if (proxies.length === 0) return [];
+  const browser = await getBrowser();
+  const stealth = await isStealthEnabled();
+
+  return Promise.all(
+    proxies.map(async (raw): Promise<ProxyHealth> => {
+      const proxy = parseProxy(raw);
+      if (!proxy) {
+        return { raw, ok: false, latencyMs: null, error: "Unparseable proxy" };
+      }
+      const start = Date.now();
+      let context: BrowserContext | null = null;
+      try {
+        context = await browser.newContext({
+          userAgent: REALISTIC_UA,
+          viewport: { width: 800, height: 600 },
+          proxy,
+          ...(stealth ? {} : {}),
+        });
+        const page = await context.newPage();
+        const resp = await page.goto("https://api.ipify.org/?format=json", {
+          waitUntil: "domcontentloaded",
+          timeout: 10_000,
+        });
+        if (!resp || !resp.ok()) {
+          return {
+            raw,
+            ok: false,
+            latencyMs: Date.now() - start,
+            error: `HTTP ${resp?.status() ?? "no response"}`,
+          };
+        }
+        return { raw, ok: true, latencyMs: Date.now() - start, error: null };
+      } catch (err) {
+        return {
+          raw,
+          ok: false,
+          latencyMs: Date.now() - start,
+          error: (err as Error).message,
+        };
+      } finally {
+        if (context) await context.close().catch(() => {});
+      }
+    }),
+  );
 }
 
 /** Diagnostics — read by Settings UI to surface current pool state. */
