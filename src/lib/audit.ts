@@ -1122,10 +1122,41 @@ export async function runAudit(
     { title: string | null; description: string | null }
   >();
 
+  // Tech-stack-aware: detect once on the homepage HTML so per-page checks
+  // can route to platform-specific rules without re-detecting.
+  const tech = await (async () => {
+    try {
+      const { detectTechStack } = await import("./tech-detect");
+      const r = await detectTechStack(url);
+      return r.technologies.map((t) => t.name);
+    } catch {
+      return [] as string[];
+    }
+  })();
+  const { classifyTech, runTechSpecificChecks } = await import(
+    "./tech-audit-rules"
+  );
+  const techContext = classifyTech(tech);
+
   for (const page of pages) {
     const r = checkPage(page);
     findings.push(...r.findings);
     metaIndex.set(page.finalUrl, r.meta);
+    // Per-tech checks
+    const techFindings = runTechSpecificChecks({
+      url: page.finalUrl,
+      html: page.html,
+      headers: page.headers,
+      tech: techContext,
+    });
+    for (const tf of techFindings) {
+      findings.push({
+        type: tf.type,
+        severity: tf.severity,
+        url: tf.url,
+        message: `[${tf.tech}] ${tf.message}`,
+      });
+    }
   }
 
   // Site-wide checks

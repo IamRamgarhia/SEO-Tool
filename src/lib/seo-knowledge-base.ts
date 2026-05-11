@@ -757,6 +757,345 @@ Which to use for what:
 Branded queries inflate everything. Always split before reporting. 70%+ branded = the SEO isn't working; fewer than 30% = you have a brand problem.`,
     tools: ["/tools/branded-split", "/tools/traffic-drop", "/tools/gsc-coverage"],
   },
+
+  // ============== 2026 authoritative-source-cited additions ==============
+
+  {
+    id: "google-helpful-content-framework",
+    title: "Google's Helpful Content framework (people-first content)",
+    tags: [
+      "helpful",
+      "people-first",
+      "hcu",
+      "helpful content update",
+      "content quality",
+      "self-assessment",
+      "ymyl",
+    ],
+    body: `Google's official Helpful Content guidance (Search Central docs). Apply this self-assessment to every page before publishing:
+
+People-first checks (must answer YES):
+- Does the content provide original information, reporting, research, or analysis?
+- Does it provide a substantial, complete, or comprehensive description of the topic?
+- Does it provide insightful analysis or interesting information beyond the obvious?
+- If drawing on other sources, does it add substantial value rather than copying or rewriting?
+- Does the main heading or page title provide a descriptive, helpful summary of the content (NOT clickbait)?
+- Would users want to bookmark, share, or recommend it?
+- Would the content be referenced in a print magazine/encyclopedia/book?
+- Does it provide substantial value when compared to other pages in search results?
+- Is it free of spelling/stylistic issues?
+- Was it well-produced (not appearing sloppy or hastily produced)?
+- Is it not mass-produced by or outsourced to a large number of creators?
+
+Avoid (search-engine-first signals that get demoted):
+- Content made primarily to attract visitors from search engines
+- Using extensive automation to produce content on many topics
+- Mainly summarizing what others have to say without much value added
+- Writing about things just because they're trending, not your real expertise
+- Promises content that doesn't deliver (e.g. "release date for X" when no date exists)
+- Writing to a specific word count because you heard Google prefers a specific count
+
+Cite the source: https://developers.google.com/search/docs/fundamentals/creating-helpful-content`,
+    tools: ["/tools/eeat-audit", "/tools/content-grader", "/tools/content-score"],
+  },
+
+  {
+    id: "google-march-2026-core-update",
+    title: "Google's March 2026 core update — what changed",
+    tags: [
+      "march 2026",
+      "core update",
+      "algorithm",
+      "ranking",
+      "site reputation abuse",
+      "rich results",
+      "faq",
+      "howto",
+    ],
+    body: `The March 2026 core update was a major shift, confirmed via Google's Search Status Dashboard. Three substantive changes you must know:
+
+1. Site Reputation Abuse policy got teeth (expanded Nov 2025, enforced March 2026)
+   - Google now algorithmically detects sections "starkly different" from main site content
+   - When detected, that section is treated as a separate entity — parent domain authority does NOT pass
+   - Trigger: third-party content (affiliates, partners, outsourced SEO firms) on sections like /coupons/, /reviews/, /deals/
+   - Fix: re-establish first-party editorial oversight (named in-house editor + bylines on every piece) OR move the section to a subdomain you don't want to inherit authority from
+
+2. Rich result retirements / reductions
+   - FAQ rich result rarely shown (now only on authoritative health/finance sites)
+   - HowTo rich result fully retired for most queries
+   - Review snippet narrowed (only on the page being primarily about the review)
+   - Schema is still valid + helps AI Mode entity verification, but stop expecting SERP display
+
+3. AI Mode + AI Overviews integration deepened
+   - Schema now feeds AI Mode entity verification heavily; Article + Person schema is the new floor
+   - Author E-E-A-T signals (bio + Person schema + sameAs) more important than ever
+   - Content scoring 8.5+ on semantic completeness is 4.2× more likely to be AIO-cited
+
+Recovery from March 2026 hits: focus on the helpful-content self-assessment, audit for site-reputation-abuse risk, strengthen author E-E-A-T. Don't expect rebound until the next core update (3-6 months).`,
+    tools: [
+      "/tools/reputation-abuse-risk",
+      "/tools/aio-passage",
+      "/tools/person-schema",
+      "/algorithm-updates",
+    ],
+  },
+
+  {
+    id: "google-ai-search-optimization",
+    title: "Google's official AI search optimization guidance",
+    tags: [
+      "ai search",
+      "ai mode",
+      "ai overviews",
+      "aio",
+      "succeeding in ai search",
+      "entity",
+    ],
+    body: `From Google's "Succeeding in AI Search" Search Central documentation (2026). Three official recommendations:
+
+1. Clear, concise answers — write content that directly answers user questions in a single, complete passage. Lead with the answer; explanations come after.
+
+2. Strong entity relationships — make it crystal clear which entity (brand, product, person) the page is about. Use Schema.org Organization / Product / Person markup with sameAs linking to authoritative profiles (Wikipedia, Crunchbase, LinkedIn, IMDB).
+
+3. Authoritative signals — author bio with credentials, citations to primary sources, dateModified, reviewer line, and a clear About / Editorial Policy page.
+
+Practical pattern that works:
+- Each H2 section opens with a 134-167 word self-contained passage that fully answers a related sub-question
+- The opening sentence is a direct definition or statement of fact ("INP measures …" not "Let's talk about INP …")
+- Include one concrete number or proper noun per ~250 words
+- Cite ≥2 authoritative outbound sources
+- Author byline + embedded Person JSON-LD in Article schema
+- Visible last-updated date matching dateModified
+
+Cite the source: https://developers.google.com/search/docs/appearance/ai-features`,
+    tools: ["/tools/aio-passage", "/tools/person-schema", "/tools/ai-citation-tactics"],
+  },
+
+  {
+    id: "google-authors-section",
+    title: "Google's Authors section requirements (new in 2026)",
+    tags: [
+      "author",
+      "byline",
+      "authorship",
+      "e-e-a-t",
+      "person schema",
+      "credentials",
+    ],
+    body: `Google added a dedicated "Authors" section to Search Central in 2026. Authorship transparency is no longer optional for E-E-A-T:
+
+What Google now expects on every article:
+- Clear visible byline near the title (not buried at the bottom)
+- Author page on your domain with full bio, photo, credentials, sameAs profiles
+- Person schema embedded in the Article schema (NOT separate)
+- Author has authored ≥3 articles on the topic (topical authority — "real people who write about real things they know")
+- For YMYL (health/finance/safety): credentials matter heavily — degrees, certifications, professional memberships
+
+Anti-patterns that hurt:
+- "Staff" or "Admin" bylines
+- Pseudonyms without verifiable identity
+- Stock photo headshots
+- Author with one post, never seen again ("article mill" pattern)
+- Author page that's just a name + role with no bio
+
+For multi-author sites: every author needs a real bio page with sameAs to their public profiles. AI Mode citation correlates strongly with how complete the author entity is.
+
+Implementation: use the Person schema generator. Pair every Article schema with an embedded author Person object, not a separate top-level Person.
+
+Cite the source: https://developers.google.com/search/docs/appearance/authors`,
+    tools: ["/tools/person-schema", "/tools/eeat-audit", "/author-authority"],
+  },
+
+  {
+    id: "google-image-seo-2026",
+    title: "Google Image SEO 2026 — preferred image metadata",
+    tags: [
+      "image seo",
+      "preferred image",
+      "image metadata",
+      "discover",
+      "image sitemap",
+      "alt text",
+    ],
+    body: `Google added a "Specify a preferred image" section to Image SEO docs in 2026 — important for Discover, AI Overview thumbnails, and rich results.
+
+Three signals Google uses to pick the page's "preferred image":
+1. og:image meta tag (most weight)
+2. Schema.org image property (Article, Product, Recipe, etc.)
+3. First in-content image that meets minimum size (1200×630+ recommended for Discover)
+
+When the three disagree, Google may pick the wrong one. Best practice:
+- Set og:image to the canonical share image at 1200×630
+- Set schema.org image to the same URL OR a higher-res version (2400×1260 for retina Discover)
+- Use the same image as the first prominent in-page <img>
+
+Other 2026 image SEO essentials:
+- Filename: hyphen-separated keywords ("red-running-shoes.webp" not "IMG_4521.jpg")
+- Alt text: describe the image's content + context (5-15 words). Skip alt only for purely decorative images.
+- Width/height attributes on every <img> (CLS prevention — now a CWV signal)
+- loading="lazy" on below-fold; "eager" on LCP image
+- WebP or AVIF preferred over JPEG/PNG; the size win is 25-50%
+- For products: include Product schema with image property
+- For e-commerce: an image sitemap submitted via robots.txt or GSC
+
+Cite the source: https://developers.google.com/search/docs/appearance/google-images`,
+    tools: ["/tools/health-check", "/image-audit", "/tools/bulk-alt"],
+  },
+
+  {
+    id: "google-javascript-seo",
+    title: "Google's JavaScript SEO guidance + AI crawler reality",
+    tags: [
+      "javascript",
+      "js seo",
+      "spa",
+      "react",
+      "next.js",
+      "rendering",
+      "ssr",
+      "csr",
+      "gptbot",
+      "ai crawler",
+    ],
+    body: `Google renders JavaScript (since 2015) using a Chromium-based renderer. But the rendering tier of Google's pipeline has limits — and AI crawlers do NOT render JS at all.
+
+What Google does:
+- HTML fetch → indexer queue → renderer queue → final HTML used for indexing
+- Renderer queue can have delays (hours to days) under load
+- JS-rendered content is indexed, but later than static HTML
+
+What AI crawlers (GPTBot, ClaudeBot, PerplexityBot, CCBot) do:
+- Fetch static HTML only — no JS execution
+- See whatever your server returns before any client-side rendering
+- AppleBot and Googlebot are the ONLY major crawlers that render JS
+
+Implication: if your React/Next.js app ships an empty body and renders client-side, AI crawlers see a blank page. You're invisible in ChatGPT, Perplexity, AI Overviews.
+
+Fix priority (ordered by impact):
+1. Server-render the critical content. In Next.js: use Server Components (default in App Router), avoid 'use client' on the main content tree.
+2. Use generateStaticParams + force-static for pages that don't need real-time data.
+3. If you MUST stay CSR: prerender a meaningful static snapshot (next export, gatsby, react-snap, prerender.io).
+4. Test what crawlers see: curl -A 'GPTBot' YOUR_URL | grep MAIN_HEADING — if missing, you're invisible.
+
+Hydration errors cause Google to use the unhydrated HTML. Console errors in production hurt SEO.
+
+Cite the source: https://developers.google.com/search/docs/crawling-indexing/javascript/javascript-seo-basics`,
+    tools: ["/tools/render", "/tools/health-check", "/tools/crux-origin"],
+  },
+
+  {
+    id: "search-status-dashboard",
+    title: "Google Search Status Dashboard — official update tracker",
+    tags: [
+      "search status",
+      "dashboard",
+      "algorithm",
+      "core update",
+      "ranking",
+      "outage",
+      "incident",
+    ],
+    body: `Google's Search Status Dashboard (status.search.google.com) is the official source for ranking/indexing changes. Use it before blaming yourself for traffic drops.
+
+What it covers:
+- Core updates (start + end dates)
+- Spam updates
+- Reviews updates
+- Indexing issues (rare but visible)
+- Crawling issues
+- Serving incidents (impressions/clicks may drop without your site changing)
+
+How to use it operationally:
+- Sudden GSC traffic drop → check the dashboard for an active update or incident first
+- If an update is ongoing, DO NOT make major changes — wait for the rollout to complete (1-3 weeks typically) before judging
+- After an update ends, compare to your prior 28-day baseline; if down >10%, audit for site-reputation abuse and helpful-content violations
+- Subscribe to the RSS feed or follow @googlesearchc on Twitter/X
+
+If the dashboard says nothing but you dropped: check Manual Actions (GSC), Security Issues (GSC), Search Console Crawl Stats, then audit for technical/HCU issues.
+
+Cite the source: https://status.search.google.com/`,
+    tools: ["/algorithm-updates", "/tools/traffic-drop", "/news"],
+  },
+
+  {
+    id: "brand-signals-authority-model",
+    title: "The 2026 brand-signals authority model (post-links era)",
+    tags: [
+      "authority",
+      "brand signals",
+      "links",
+      "entity",
+      "navigational queries",
+      "brand searches",
+    ],
+    body: `Authority in 2026 is a network of signals, not just links. Search Engine Land's "links to brand signals" analysis maps the new model:
+
+Six pillars of the modern authority signal:
+1. Branded search volume — people typing your brand into Google. The single strongest indicator Google can't fake.
+2. Entity completeness — Knowledge Panel + Wikipedia + Wikidata + structured sameAs across 10+ profiles.
+3. Quality citations — links from sites that are themselves authoritative (Wikipedia, .edu, .gov, major publications).
+4. Mention velocity — frequency of unlinked brand mentions across the open web (Reddit, Twitter/X, niche forums, news).
+5. Author signals — named experts publishing across the topic cluster (E-E-A-T at scale).
+6. Engagement signals — return visits, brand-name navigational queries, GA4 engagement rate, low pogo-sticking.
+
+Practical implications:
+- Branded search volume is built by everything else: PR, podcasts, Reddit AMAs, YouTube appearances, conference talks. Track it in GSC as a leading indicator.
+- One Wikipedia mention is worth more than 100 directory links.
+- Earning unlinked mentions counts — set up brand-mention monitoring (we have /brand-monitor) and convert them to links over time.
+
+Old playbook (still works but diminishing): high-DR backlinks. New playbook (compounding): be a real brand people search for by name.`,
+    tools: [
+      "/brand-monitor",
+      "/brand-serp",
+      "/knowledge-panel",
+      "/author-authority",
+    ],
+  },
+
+  {
+    id: "google-search-central-canon",
+    title: "Authoritative SEO source list (what to trust, what to verify)",
+    tags: [
+      "sources",
+      "documentation",
+      "canon",
+      "trust",
+      "google",
+      "search central",
+      "moz",
+      "ahrefs",
+    ],
+    body: `When researching SEO, prefer these sources in order of authority:
+
+Tier 1 — Primary sources (Google itself):
+- developers.google.com/search/docs — official Search Central documentation
+- search.google.com/search-console — your own data, ground truth
+- status.search.google.com — official update tracker
+- Google Search Central YouTube channel — recorded statements from Search Liaison
+- @googlesearchc + @googlesearchliaison on Twitter/X — confirmed announcements
+
+Tier 2 — High-quality secondary sources (cite-able):
+- searchengineland.com — daily news, often with Google quotes
+- searchenginejournal.com — practical analysis
+- moz.com/learn — established educational content (Beginner's Guide to SEO is a classic)
+- ahrefs.com/blog — data-driven studies (e.g. "What ranks in 2026")
+- backlinko.com — case-study heavy
+- semrush.com/blog — industry research
+
+Tier 3 — Use carefully (often correct, sometimes folklore):
+- Random SEO YouTube videos / TikToks
+- Reddit r/SEO — useful for sentiment, NOT for tactics
+- Old blog posts (pre-2023 advice on "keyword density" / "meta keywords" / "submit to 100 directories" is harmful)
+
+Red flags:
+- "Guaranteed page 1 in 30 days" — black-hat or scam
+- "We have a secret Google algorithm leak" — usually misinterpreted or stale
+- "Submit to 100 directories" — outdated, harmful in 2026
+- Pre-2023 advice without a re-publish date — likely outdated post-HCU/2024 spam updates
+
+When two sources contradict, pick the more recent + the more primary. Google's own docs always win.`,
+    tools: ["/knowledge", "/news", "/algorithm-updates"],
+  },
 ];
 
 // =================== Retrieval ===================
