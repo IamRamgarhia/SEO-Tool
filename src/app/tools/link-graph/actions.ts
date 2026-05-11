@@ -5,6 +5,7 @@ import {
   analyseInternalLinks,
   type LinkAnalysis,
 } from "@/lib/internal-link-graph";
+import { saveToolRun } from "@/lib/tool-runs";
 
 const inputSchema = z.object({
   startUrl: z
@@ -37,6 +38,12 @@ export async function runLinkGraph(
       startUrl: parsed.data.startUrl,
       maxPages: parsed.data.maxPages,
     });
+    await saveToolRun({
+      toolId: "link-graph",
+      label: parsed.data.startUrl,
+      input: parsed.data,
+      result: { ok: true, analysis },
+    }).catch(() => undefined);
     return { ok: true, analysis };
   } catch (err) {
     return {

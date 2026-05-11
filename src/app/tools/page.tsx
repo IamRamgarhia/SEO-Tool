@@ -716,6 +716,22 @@ const tools = [
       "Up to 5 keyword-gap briefs per run. Vulnerability scoring + required E-E-A-T + schema + AIO passage hints + definition of done.",
     accent: "rose",
   },
+  {
+    href: "/tools/image-gen",
+    icon: ImageIcon,
+    title: "AI image generation (BYO OpenAI key)",
+    description:
+      "DALL·E 3 hero / OG / illustrative images. Aspect + quality + style controls. Output downloaded directly — no server storage.",
+    accent: "violet",
+  },
+  {
+    href: "/tools/utm-attribution",
+    icon: Network,
+    title: "Multi-touch attribution (UTM)",
+    description:
+      "First-touch, last-touch, assisted, linear, position-based attribution from any UTM-tagged touch CSV. No CRM needed.",
+    accent: "violet",
+  },
 ];
 
 const accentMap: Record<string, string> = {

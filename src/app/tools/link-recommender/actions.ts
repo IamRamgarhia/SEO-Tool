@@ -5,6 +5,7 @@ import {
   suggestInternalLinks,
   type InternalLinkAiResult,
 } from "@/lib/internal-link-ai";
+import { saveToolRun } from "@/lib/tool-runs";
 
 const inputSchema = z.object({
   siteUrl: z
@@ -43,6 +44,12 @@ export async function recommendLinks(
       draft: parsed.data.draft,
       excludeUrl: parsed.data.excludeUrl,
     });
+    await saveToolRun({
+      toolId: "link-recommender",
+      label: parsed.data.siteUrl,
+      input: { siteUrl: parsed.data.siteUrl, excludeUrl: parsed.data.excludeUrl },
+      result: { ok: true, result },
+    }).catch(() => undefined);
     return { ok: true, result };
   } catch (err) {
     return { ok: false, error: (err as Error).message ?? "Recommendation failed" };

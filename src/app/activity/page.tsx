@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +10,7 @@ import {
   AlertCircle,
   CheckCircle2,
   AlertTriangle,
+  Filter,
 } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/db/client";
@@ -66,7 +67,50 @@ const kindMeta: Record<
   },
 };
 
-export default async function ActivityPage() {
+type SearchParams = { kind?: string; level?: string; client?: string };
+
+export default async function ActivityPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const sp = await searchParams;
+  const kindFilter = sp.kind ?? "";
+  const levelFilter = sp.level ?? "";
+  const clientFilter = sp.client ? Number(sp.client) : null;
+
+  const conds = [];
+  if (kindFilter) conds.push(eq(activityLog.kind, kindFilter));
+  if (levelFilter)
+    conds.push(
+      eq(
+        activityLog.level,
+        levelFilter as "info" | "success" | "warning" | "error",
+      ),
+    );
+  if (clientFilter !== null)
+    conds.push(eq(activityLog.clientId, clientFilter));
+  const where = conds.length > 0 ? and(...conds) : undefined;
+
+  const allClients = await db
+    .select({ id: clients.id, name: clients.name })
+    .from(clients)
+    .orderBy(clients.name);
+
+  // Counts for filter chips (computed once)
+  const allRowsForCounts = await db
+    .select({ kind: activityLog.kind, level: activityLog.level })
+    .from(activityLog);
+  const kindCounts = new Map<string, number>();
+  const levelCounts = new Map<string, number>();
+  for (const r of allRowsForCounts) {
+    kindCounts.set(r.kind, (kindCounts.get(r.kind) ?? 0) + 1);
+    levelCounts.set(r.level, (levelCounts.get(r.level) ?? 0) + 1);
+  }
+  const topKinds = Array.from(kindCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 12);
+
   const rows = await db
     .select({
       id: activityLog.id,
@@ -81,8 +125,25 @@ export default async function ActivityPage() {
     })
     .from(activityLog)
     .leftJoin(clients, eq(activityLog.clientId, clients.id))
+    .where(where)
     .orderBy(desc(activityLog.createdAt))
     .limit(200);
+
+  const buildHref = (overrides: Partial<SearchParams>) => {
+    const p = new URLSearchParams();
+    const merged = { kind: kindFilter, level: levelFilter, client: sp.client };
+    for (const [k, v] of Object.entries({ ...merged, ...overrides })) {
+      if (v) p.set(k, String(v));
+    }
+    const q = p.toString();
+    return q ? `/activity?${q}` : "/activity";
+  };
+  const pill = (active: boolean) =>
+    `rounded-full px-2.5 py-1 text-[11px] ring-1 ring-inset transition-colors ${
+      active
+        ? "bg-violet-500/15 text-violet-300 ring-violet-500/30"
+        : "bg-white/5 text-muted-foreground ring-white/10 hover:bg-white/10"
+    }`;
 
   // Group by day
   const byDay = new Map<string, typeof rows>();
@@ -97,15 +158,68 @@ export default async function ActivityPage() {
     <div className="mx-auto max-w-5xl space-y-6">
       <PageHeader
         title="Activity"
-        description="Everything that happened — audits, client creates, page changes, outreach, completed tasks. Newest first."
+        description="Everything that happened — audits, client creates, page changes, outreach, completed tasks. Filter by kind / level / client."
         icon={Activity}
         accent="cyan"
         meta={
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-2.5 py-1 text-xs text-muted-foreground ring-1 ring-inset ring-white/10">
-            {rows.length} entries
+            {rows.length} of {allRowsForCounts.length} entries
           </span>
         }
       />
+
+      <section className="space-y-2 rounded-2xl border border-white/5 bg-card/40 p-3 backdrop-blur-md">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Filter className="size-3 text-muted-foreground" />
+          <Link href={buildHref({ kind: undefined })} className={pill(!kindFilter)}>
+            All kinds
+          </Link>
+          {topKinds.map(([k, n]) => (
+            <Link key={k} href={buildHref({ kind: k })} className={pill(kindFilter === k)}>
+              <code className="font-mono text-[10px]">{k}</code> ({n})
+            </Link>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Level
+          </span>
+          <Link href={buildHref({ level: undefined })} className={pill(!levelFilter)}>
+            Any
+          </Link>
+          {(["info", "success", "warning", "error"] as const).map((lv) => {
+            const n = levelCounts.get(lv) ?? 0;
+            if (n === 0 && levelFilter !== lv) return null;
+            return (
+              <Link key={lv} href={buildHref({ level: lv })} className={pill(levelFilter === lv)}>
+                {lv} ({n})
+              </Link>
+            );
+          })}
+        </div>
+        {allClients.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Client
+            </span>
+            <Link
+              href={buildHref({ client: undefined })}
+              className={pill(clientFilter === null)}
+            >
+              Any
+            </Link>
+            {allClients.map((c) => (
+              <Link
+                key={c.id}
+                href={buildHref({ client: String(c.id) })}
+                className={pill(clientFilter === c.id)}
+              >
+                {c.name}
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
 
       {rows.length === 0 ? (
         <div className="rounded-2xl border border-white/5 bg-card/40 px-6 py-12 text-center text-sm text-muted-foreground backdrop-blur-md">

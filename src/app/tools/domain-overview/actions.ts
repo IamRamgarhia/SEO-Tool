@@ -1,6 +1,7 @@
 "use server";
 
 import { fetchSiteMetadata, type SiteMetadata } from "@/lib/site-metadata";
+import { saveToolRun } from "@/lib/tool-runs";
 
 export type DomainOverview = {
   ok: true;
@@ -152,7 +153,7 @@ export async function runDomainOverview(
   );
   const ageHint = guessAgeHint(html);
 
-  return {
+  const result: DomainOverview = {
     ok: true,
     url,
     finalUrl,
@@ -177,6 +178,13 @@ export async function runDomainOverview(
     indexedEstimate,
     ageHint,
   };
+  await saveToolRun({
+    toolId: "domain-overview",
+    label: finalUrl,
+    input: { url: rawUrl },
+    result,
+  }).catch(() => undefined);
+  return result;
 }
 
 async function checkHttps(

@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { checkMobileFriendliness, type MobileFriendlyCheck } from "@/lib/page-inspectors";
+import { saveToolRun } from "@/lib/tool-runs";
 
 const schema = z.object({
   url: z
@@ -25,5 +26,11 @@ export async function runMobile(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid URL" };
   const r = await checkMobileFriendliness(parsed.data.url);
   if (!r.ok && r.error) return { ok: false, error: r.error };
+  await saveToolRun({
+    toolId: "mobile-friendly",
+    label: parsed.data.url,
+    input: { url: parsed.data.url },
+    result: { ok: true, result: r },
+  }).catch(() => undefined);
   return { ok: true, result: r };
 }

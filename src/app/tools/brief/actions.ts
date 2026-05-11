@@ -4,6 +4,7 @@ import {
   generateCompositeBrief,
   type CompositeBrief,
 } from "@/lib/brief-composite";
+import { saveToolRun } from "@/lib/tool-runs";
 
 export type BriefState =
   | { ok: true; result: CompositeBrief }
@@ -19,5 +20,11 @@ export async function runBrief(
   if (!query) return { ok: false, error: "Query required." };
   const r = await generateCompositeBrief({ query, country, clientDomain });
   if (!r.ok && r.error) return { ok: false, error: r.error };
+  await saveToolRun({
+    toolId: "brief",
+    label: `${query} (${country})`,
+    input: { query, country, clientDomain },
+    result: { ok: true, result: r },
+  }).catch(() => undefined);
   return { ok: true, result: r };
 }

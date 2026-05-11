@@ -1,6 +1,7 @@
 "use server";
 
 import { analyzeLogs, type LogAnalysis } from "@/lib/log-analyzer";
+import { saveToolRun } from "@/lib/tool-runs";
 
 export type LogAnalyzeState =
   | { ok: true; result: LogAnalysis }
@@ -28,6 +29,12 @@ export async function runLogAnalysis(
           "Couldn't parse any lines. Combined log format expected (most Apache + Nginx access logs). Quick fix: in Nginx, set log_format combined.",
       };
     }
+    await saveToolRun({
+      toolId: "log-analyzer",
+      label: `${result.parsedLines.toLocaleString()} lines · ${filter}`,
+      input: { filter, bytes: raw.length },
+      result: { ok: true, result },
+    }).catch(() => undefined);
     return { ok: true, result };
   } catch (err) {
     return { ok: false, error: (err as Error).message ?? "Analysis failed" };

@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { generateSchemaFromUrl, type SchemaGenResult } from "@/lib/ai-schema-gen";
+import { saveToolRun } from "@/lib/tool-runs";
 
 const inputSchema = z.object({
   url: z
@@ -26,5 +27,11 @@ export async function runAiSchema(
   }
   const r = await generateSchemaFromUrl({ url: parsed.data.url });
   if (!r.ok) return { ok: false, error: r.error };
+  await saveToolRun({
+    toolId: "ai-schema",
+    label: parsed.data.url,
+    input: { url: parsed.data.url },
+    result: { ok: true, result: r },
+  }).catch(() => undefined);
   return { ok: true, result: r };
 }
