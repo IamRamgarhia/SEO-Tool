@@ -454,19 +454,41 @@ export function Sidebar({
         })}
       </nav>
 
-      {/* Footer status */}
-      <div
-        className={`border-t border-sidebar-border py-2 ${
-          collapsed ? "px-2" : "px-3"
-        }`}
-      >
+      {/* User block + live status — shadcn-admin pattern */}
+      <div className="border-t border-sidebar-border">
+        {/* User block */}
+        <Link
+          href="/settings"
+          title={collapsed ? "Account · Settings" : undefined}
+          className={`flex items-center gap-2 transition-colors hover:bg-sidebar-accent ${
+            collapsed ? "h-12 justify-center" : "h-14 px-3"
+          }`}
+        >
+          <div className="grid size-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-xs font-semibold text-white">
+            SE
+          </div>
+          {!collapsed && (
+            <>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium leading-none text-sidebar-foreground">
+                  Local user
+                </div>
+                <div className="mt-1 truncate text-xs text-sidebar-foreground/60">
+                  Single-user mode
+                </div>
+              </div>
+              <ChevronRight className="size-4 text-sidebar-foreground/40" />
+            </>
+          )}
+        </Link>
+        {/* Live status pill */}
         <div
-          className={`flex items-center gap-2 text-[11px] text-muted-foreground ${
-            collapsed ? "justify-center" : ""
+          className={`flex items-center gap-2 border-t border-sidebar-border py-2 text-xs text-sidebar-foreground/60 ${
+            collapsed ? "justify-center px-2" : "px-3"
           }`}
         >
           <span className="size-1.5 rounded-full bg-emerald-400" />
-          {!collapsed && <span>Local</span>}
+          {!collapsed && <span>Local · everything on this machine</span>}
         </div>
       </div>
     </aside>

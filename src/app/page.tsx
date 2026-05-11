@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { StatCard } from "@/components/ui/stat-card";
 import { ScoreGauge } from "@/components/ui/score-gauge";
+import { AreaChart } from "@/components/ui/area-chart";
 import Link from "next/link";
 import { PortfolioTrafficPanel } from "./portfolio-traffic-panel";
 import { PortfolioQuickWinsPanel } from "./portfolio-quick-wins-panel";
@@ -88,6 +89,19 @@ export default async function DashboardPage() {
     .leftJoin(clients, eq(audits.clientId, clients.id))
     .orderBy(desc(audits.createdAt))
     .limit(5);
+
+  // Wider window for the trend chart — 30 most recent completed audits
+  // (across clients) so the line has enough points to be meaningful.
+  const trendAudits = await db
+    .select({
+      score: audits.score,
+      completedAt: audits.completedAt,
+      createdAt: audits.createdAt,
+    })
+    .from(audits)
+    .where(eq(audits.status, "completed"))
+    .orderBy(desc(audits.createdAt))
+    .limit(30);
 
   const priorityTasks = await db
     .select({
@@ -409,7 +423,38 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* Bento quick-actions — Linear-style flat tiles, one per workflow */}
+      {/* Score trend chart — shadcn-admin-style area chart of recent audits */}
+      {!isFresh && trendAudits.length >= 2 && (
+        <section className="rounded-xl border border-border bg-card p-6 shadow">
+          <header className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight text-foreground">
+                Audit score trend
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Last {trendAudits.length} completed audits across all clients.
+              </p>
+            </div>
+          </header>
+          <AreaChart
+            data={[...trendAudits]
+              .reverse()
+              .map((a, i) => ({
+                name: (a.completedAt ?? a.createdAt).toLocaleDateString(
+                  undefined,
+                  { month: "short", day: "numeric" },
+                ),
+                value: a.score ?? 0,
+                _idx: i,
+              }))}
+            colorClass="text-violet-500"
+            height={220}
+            formatValue={(v) => `${Math.round(v)}`}
+          />
+        </section>
+      )}
+
+      {/* Bento quick-actions — one tile per workflow */}
       <BentoQuickActions />
     </div>
   );
