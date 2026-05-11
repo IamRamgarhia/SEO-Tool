@@ -43,7 +43,18 @@ const defaultPalette = {
   bad: "#c43151" as Color,
 };
 
+// Module-mutable so the existing helpers (88 references) can read it
+// without threading palette through every function. Concurrent
+// generateReportPdf calls are serialized via _generateLock below so two
+// reports don't stomp each other's brand color.
 let palette = { ...defaultPalette };
+
+// Mutex that serializes report generation. Without this, two concurrent
+// calls would race on palette mutation: client A sets brand color, awaits
+// I/O, then client B overwrites palette.brand mid-render of A's PDF.
+// Real-world risk is low (single-user app, ~5s per report) but the bug
+// is real and the cost of fixing is a one-line mutex.
+let _generateLock: Promise<void> = Promise.resolve();
 
 type Brand = {
   name: string | null;
@@ -273,22 +284,33 @@ export async function generateReportPdf(
   clientId: number,
   template: ReportTemplate = "detailed",
 ): Promise<Buffer> {
-  const [client] = await db
-    .select()
-    .from(clients)
-    .where(eq(clients.id, clientId))
-    .limit(1);
-  if (!client) throw new Error("Client not found");
+  // Wait for any in-flight report generation to finish before mutating
+  // the shared palette. Each call's mutex baton releases in the finally
+  // block at the bottom of this function.
+  const prevLock = _generateLock;
+  let releaseLock!: () => void;
+  _generateLock = new Promise<void>((r) => {
+    releaseLock = r;
+  });
+  await prevLock;
 
-  // Load brand and override palette accent
-  const brand = await loadBrand();
-  palette = {
-    ...defaultPalette,
-    brand:
-      brand.color && /^#[0-9a-f]{6}$/i.test(brand.color)
-        ? brand.color
-        : defaultPalette.brand,
-  };
+  try {
+    const [client] = await db
+      .select()
+      .from(clients)
+      .where(eq(clients.id, clientId))
+      .limit(1);
+    if (!client) throw new Error("Client not found");
+
+    // Load brand and override palette accent
+    const brand = await loadBrand();
+    palette = {
+      ...defaultPalette,
+      brand:
+        brand.color && /^#[0-9a-f]{6}$/i.test(brand.color)
+          ? brand.color
+          : defaultPalette.brand,
+    };
 
   const completedAudits = await db
     .select()
@@ -1207,9 +1229,12 @@ export async function generateReportPdf(
       );
   }
 
-  drawFooter(doc, brand, today);
-  doc.end();
-  return finished;
+    drawFooter(doc, brand, today);
+    doc.end();
+    return await finished;
+  } finally {
+    releaseLock();
+  }
 }
 
 function drawFooter(

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "@/lib/secure-compare";
+import { expectedToken } from "@/middleware";
 
 export const dynamic = "force-dynamic";
 
@@ -24,10 +25,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Wrong password" }, { status: 401 });
   }
 
+  // Cookie value is the hashed token, NEVER the raw password. If the
+  // cookie leaks, the attacker has to crack SHA-256 to recover the
+  // password — not a free read.
+  const token = await expectedToken(required);
   const res = NextResponse.json({ ok: true });
   res.cookies.set({
     name: "stb_auth",
-    value: required,
+    value: token,
     httpOnly: true,
     sameSite: "lax",
     secure: req.nextUrl.protocol === "https:",

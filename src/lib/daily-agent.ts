@@ -15,7 +15,7 @@
  * Each step is wrapped so a failure in one doesn't block the next.
  */
 
-import { eq, lt, lte, and, isNotNull } from "drizzle-orm";
+import { desc, eq, lt, lte, and, isNotNull } from "drizzle-orm";
 import { db } from "@/db/client";
 import { audits, clients, keywords, keywordRankings } from "@/db/schema";
 import { getSetting, setSetting } from "./settings-store";
@@ -511,7 +511,10 @@ async function weeklyAiAuditStep(): Promise<string> {
         .select()
         .from(audits)
         .where(and(eq(audits.clientId, c.id), eq(audits.kind, "ai_full")))
-        .orderBy(audits.createdAt)
+        // FIX: was orderBy(createdAt) which is ASC = oldest first. The
+        // freshness check downstream wanted "most recent" — without desc,
+        // it always saw an old audit and re-ran weekly, burning credits.
+        .orderBy(desc(audits.createdAt))
         .limit(1);
       if (
         recent.length > 0 &&

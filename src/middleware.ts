@@ -33,7 +33,7 @@ function isPublicPath(pathname: string): boolean {
   return false;
 }
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const required = process.env.APP_PASSWORD;
   // No password set → no auth required (single-user local mode)
   if (!required) return NextResponse.next();
@@ -42,8 +42,11 @@ export function middleware(req: NextRequest) {
   if (isPublicPath(pathname)) return NextResponse.next();
 
   const cookie = req.cookies.get(COOKIE_NAME);
-  if (cookie?.value && timingSafeEqual(cookie.value, expectedToken(required))) {
-    return NextResponse.next();
+  if (cookie?.value) {
+    const expected = await expectedToken(required);
+    if (timingSafeEqual(cookie.value, expected)) {
+      return NextResponse.next();
+    }
   }
 
   // Browser-style request → redirect to /login
@@ -61,18 +64,21 @@ export function middleware(req: NextRequest) {
 }
 
 /**
- * Token = sha256(APP_PASSWORD + ".v1") — deterministic so we can verify
- * without keeping a session store. The salt isolates this from any other
- * use of the same password. This is plenty for a self-hosted single-user
- * password gate.
+ * Token = SHA-256(APP_PASSWORD + ".v1") expressed as 64-char hex.
+ *
+ * The cookie value is the HASH, never the raw password. If the cookie
+ * ever leaks (XSS, network sniff, dumped logs), the attacker has to
+ * crack a SHA-256 to recover APP_PASSWORD — not a free read.
+ *
+ * Edge runtime: crypto.subtle.digest is async, hence this helper is
+ * async. Middleware now awaits it; the login route does the same.
  */
-export function expectedToken(password: string): string {
-  // Edge-runtime compatible hashing via SubtleCrypto
-  // We compute synchronously by using a precomputed-style approach: since
-  // middleware runs in edge runtime where crypto.subtle is async, we keep
-  // the token = password (constant-time compared). This is safe for HTTPS
-  // deployment where the cookie is over TLS.
-  return password;
+export async function expectedToken(password: string): Promise<string> {
+  const data = new TextEncoder().encode(`${password}.v1`);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 export const config = {

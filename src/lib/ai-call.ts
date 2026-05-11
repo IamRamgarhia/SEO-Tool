@@ -335,7 +335,11 @@ type CallArgs = AiCallOptions & {
 };
 
 async function callGemini(args: CallArgs): Promise<string | null> {
-  const reply = await sharedCallGemini({
+  // Returns null on any failure to match the contract of every other
+  // provider's caller in this file. (Previously this threw, which made
+  // Gemini the odd one out — the dispatcher catches errors but null vs
+  // thrown affected downstream logging.)
+  return sharedCallGemini({
     apiKey: args.apiKey ?? "",
     model: args.model,
     system: args.system,
@@ -345,11 +349,6 @@ async function callGemini(args: CallArgs): Promise<string | null> {
     timeoutMs: args.timeoutMs,
     caller: "ai-call",
   });
-  if (reply === null) {
-    // Surface a throw so the dispatcher's try/catch path is unchanged.
-    throw new Error("Gemini returned no response (see server log for details)");
-  }
-  return reply;
 }
 
 async function callAnthropic(args: CallArgs): Promise<string | null> {

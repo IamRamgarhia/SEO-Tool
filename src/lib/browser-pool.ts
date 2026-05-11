@@ -343,11 +343,23 @@ export async function checkProxyHealth(): Promise<ProxyHealth[]> {
   const browser = await getBrowser();
   const stealth = await isStealthEnabled();
 
-  return Promise.all(
-    proxies.map(async (raw): Promise<ProxyHealth> => {
+  // Concurrency-bounded health check. The previous version did a flat
+  // Promise.all over every proxy — 20 proxies × ~300 MB per Chromium
+  // context = 6 GB instant RAM spike, guaranteed OOM on small VPSes.
+  // Cap at 3 in-flight contexts; queue the rest.
+  const HEALTH_CHECK_CONCURRENCY = 3;
+  const results: ProxyHealth[] = new Array(proxies.length);
+  let nextIndex = 0;
+
+  async function worker(): Promise<void> {
+    while (true) {
+      const i = nextIndex++;
+      if (i >= proxies.length) return;
+      const raw = proxies[i];
       const proxy = parseProxy(raw);
       if (!proxy) {
-        return { raw, ok: false, latencyMs: null, error: "Unparseable proxy" };
+        results[i] = { raw, ok: false, latencyMs: null, error: "Unparseable proxy" };
+        continue;
       }
       const start = Date.now();
       let context: BrowserContext | null = null;
@@ -364,16 +376,22 @@ export async function checkProxyHealth(): Promise<ProxyHealth[]> {
           timeout: 10_000,
         });
         if (!resp || !resp.ok()) {
-          return {
+          results[i] = {
             raw,
             ok: false,
             latencyMs: Date.now() - start,
             error: `HTTP ${resp?.status() ?? "no response"}`,
           };
+        } else {
+          results[i] = {
+            raw,
+            ok: true,
+            latencyMs: Date.now() - start,
+            error: null,
+          };
         }
-        return { raw, ok: true, latencyMs: Date.now() - start, error: null };
       } catch (err) {
-        return {
+        results[i] = {
           raw,
           ok: false,
           latencyMs: Date.now() - start,
@@ -382,8 +400,16 @@ export async function checkProxyHealth(): Promise<ProxyHealth[]> {
       } finally {
         if (context) await context.close().catch(() => {});
       }
-    }),
+    }
+  }
+
+  await Promise.all(
+    Array.from(
+      { length: Math.min(HEALTH_CHECK_CONCURRENCY, proxies.length) },
+      worker,
+    ),
   );
+  return results;
 }
 
 /** Diagnostics — read by Settings UI to surface current pool state. */
