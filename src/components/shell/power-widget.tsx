@@ -14,6 +14,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Power, RefreshCw, Square, Settings as Cog, X } from "lucide-react";
+import { safeFetch } from "@/lib/safe-fetch";
 
 export function PowerWidget() {
   const [open, setOpen] = useState(false);
@@ -46,43 +47,41 @@ export function PowerWidget() {
     }
     setBusy("restart");
     setMsg("Restarting…");
-    try {
-      const res = await fetch("/api/restart", { method: "POST" });
-      const j = (await res.json()) as { ok: boolean; message?: string; error?: string };
-      if (!j.ok) {
-        toast.error("Restart failed", { description: j.error ?? "Unknown error" });
-        setMsg(j.error ?? "Restart failed.");
-        setBusy(null);
-        return;
-      }
-      toast.success("Restarting server", {
-        description: "Page will reload itself once the server is back",
-      });
-      // Poll for the server to come back, then hard-reload.
-      setMsg("Waiting for server to come back…");
-      const start = Date.now();
-      const poll = async () => {
-        try {
-          const r = await fetch("/api/health-ping", { cache: "no-store" });
-          if (r.ok) {
-            location.reload();
-            return;
-          }
-        } catch {
-          // expected during downtime
-        }
-        if (Date.now() - start < 60_000) {
-          setTimeout(poll, 1_500);
-        } else {
-          setMsg("Server didn't come back. Try the desktop shortcut.");
-          setBusy(null);
-        }
-      };
-      setTimeout(poll, 4_000);
-    } catch (err) {
-      setMsg((err as Error).message || "Restart failed.");
+    const r = await safeFetch<{ ok: boolean; message?: string }>(
+      "/api/restart",
+      { method: "POST" },
+    );
+    if (!r.ok) {
+      toast.error("Restart failed", { description: r.error });
+      setMsg(r.error);
       setBusy(null);
+      return;
     }
+    toast.success("Restarting server", {
+      description: "Page will reload itself once the server is back",
+    });
+    setMsg("Waiting for server to come back…");
+    const start = Date.now();
+    const poll = async () => {
+      try {
+        const res = await fetch("/api/health-ping", { cache: "no-store" });
+        if (res.ok) {
+          location.reload();
+          return;
+        }
+      } catch {
+        // expected during downtime
+      }
+      if (Date.now() - start < 60_000) {
+        setTimeout(poll, 1_500);
+      } else {
+        setMsg(
+          "Server didn't come back in 60s. Open seo.cmd or your desktop shortcut.",
+        );
+        setBusy(null);
+      }
+    };
+    setTimeout(poll, 4_000);
   }
 
   async function stop() {
@@ -95,12 +94,20 @@ export function PowerWidget() {
     }
     setBusy("stop");
     setMsg("Stopping…");
-    try {
-      await fetch("/api/shutdown", { method: "POST" });
-      setMsg("Server stopped. Launch it again from your desktop shortcut.");
-    } catch {
-      setMsg("Server stopped.");
+    const r = await safeFetch<{ ok: boolean; message?: string }>(
+      "/api/shutdown",
+      { method: "POST" },
+    );
+    if (!r.ok && r.status !== 0) {
+      toast.error("Stop failed", { description: r.error });
+      setMsg(r.error);
+      setBusy(null);
+      return;
     }
+    toast.success("Server stopped", {
+      description: "Launch it again from your desktop shortcut.",
+    });
+    setMsg("Server stopped. Launch it again from your desktop shortcut.");
   }
 
   return (
