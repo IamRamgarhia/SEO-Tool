@@ -5,6 +5,7 @@ import {
   discoverBacklinks,
   type DiscoveryResult,
 } from "@/lib/backlink-discovery";
+import { saveToolRun } from "@/lib/tool-runs";
 
 const inputSchema = z.object({
   targetDomain: z.string().trim().min(3).max(255),
@@ -35,6 +36,12 @@ export async function runBacklinkDiscovery(
       skipVerify: parsed.data.skipVerify,
       limit: 80,
     });
+    await saveToolRun({
+      toolId: "backlink-discovery",
+      label: parsed.data.targetDomain,
+      input: parsed.data,
+      result: { ok: true, result },
+    }).catch(() => undefined);
     return { ok: true, result };
   } catch (err) {
     return { ok: false, error: (err as Error).message ?? "Discovery failed" };

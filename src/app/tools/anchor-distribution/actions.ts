@@ -5,6 +5,7 @@ import {
   extractAnchorDistribution,
   type AnchorDistribution,
 } from "@/lib/page-inspectors";
+import { saveToolRun } from "@/lib/tool-runs";
 
 const schema = z.object({
   url: z
@@ -46,5 +47,11 @@ export async function runAnchor(
     exactMatchTerms,
   });
   if (!r.ok && r.error) return { ok: false, error: r.error };
+  await saveToolRun({
+    toolId: "anchor-distribution",
+    label: parsed.data.url,
+    input: parsed.data,
+    result: { ok: true, result: r },
+  }).catch(() => undefined);
   return { ok: true, result: r };
 }

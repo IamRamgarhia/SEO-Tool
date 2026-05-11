@@ -1,5 +1,7 @@
 "use server";
 
+import { saveToolRun } from "@/lib/tool-runs";
+
 export type HreflangEntry = {
   lang: string;
   href: string;
@@ -231,7 +233,7 @@ export async function checkHreflang(rawUrl: string): Promise<HreflangResult> {
     }
   }
 
-  return {
+  const result: HreflangResult = {
     ok: true,
     url,
     finalUrl: res.finalUrl,
@@ -240,4 +242,11 @@ export async function checkHreflang(rawUrl: string): Promise<HreflangResult> {
     hasXDefault,
     reciprocal,
   };
+  await saveToolRun({
+    toolId: "hreflang",
+    label: `${url} · ${entries.length} entries · ${issues.length} issues`,
+    input: { url: rawUrl },
+    result,
+  }).catch(() => undefined);
+  return result;
 }

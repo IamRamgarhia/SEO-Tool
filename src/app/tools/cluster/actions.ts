@@ -1,6 +1,7 @@
 "use server";
 
 import { buildCluster, type ClusterPlan } from "@/lib/cluster-builder";
+import { saveToolRun } from "@/lib/tool-runs";
 
 export type ClusterState =
   | { ok: true; plan: ClusterPlan }
@@ -15,5 +16,11 @@ export async function runCluster(
   if (!topic) return { ok: false, error: "Head topic required." };
   const plan = await buildCluster({ topic, country });
   if (!plan.ok && plan.error) return { ok: false, error: plan.error };
+  await saveToolRun({
+    toolId: "cluster",
+    label: `${topic} (${country})`,
+    input: { topic, country },
+    result: { ok: true, plan },
+  }).catch(() => undefined);
   return { ok: true, plan };
 }

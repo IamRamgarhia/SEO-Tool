@@ -1,5 +1,7 @@
 "use server";
 
+import { saveToolRun } from "@/lib/tool-runs";
+
 export type AnalyzedLink = {
   href: string;
   anchor: string;
@@ -157,8 +159,8 @@ export async function analyzeLinks(rawUrl: string): Promise<LinkAnalysisResult> 
   const nofollow = links.filter((l) => l.nofollow).length;
   const follow = links.length - nofollow;
 
-  return {
-    ok: true,
+  const result = {
+    ok: true as const,
     url: finalUrl,
     totalLinks: links.length,
     internalCount: internal,
@@ -168,4 +170,11 @@ export async function analyzeLinks(rawUrl: string): Promise<LinkAnalysisResult> 
     links,
     topAnchors,
   };
+  await saveToolRun({
+    toolId: "link-checker",
+    label: `${finalUrl} · ${links.length} links (${internal} int / ${external} ext)`,
+    input: { url: rawUrl },
+    result,
+  }).catch(() => undefined);
+  return result;
 }

@@ -131,4 +131,12 @@ export const TOOL_LABELS: Record<string, string> = {
   "intent-classifier": "Search intent classifier",
   "keyword-difficulty": "Keyword difficulty",
   "content-grader": "Content grader",
+  "anchor-distribution": "Anchor distribution",
+  "backlink-discovery": "Backlink discovery",
+  "canonical-audit": "Canonical audit",
+  cluster: "Keyword cluster builder",
+  "bulk-scan": "Bulk URL scan",
+  "content-score": "Content score",
+  hreflang: "Hreflang validator",
+  "link-checker": "Link checker",
 };

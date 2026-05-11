@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { auditCanonicals, type CanonicalAuditResult } from "@/lib/canonical-audit";
+import { saveToolRun } from "@/lib/tool-runs";
 
 const schema = z.object({
   startUrl: z
@@ -29,5 +30,11 @@ export async function runCanonical(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   const r = await auditCanonicals(parsed.data);
   if (!r.ok && r.error) return { ok: false, error: r.error };
+  await saveToolRun({
+    toolId: "canonical-audit",
+    label: parsed.data.startUrl,
+    input: parsed.data,
+    result: { ok: true, result: r },
+  }).catch(() => undefined);
   return { ok: true, result: r };
 }

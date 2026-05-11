@@ -695,6 +695,8 @@ export const contentBriefs = sqliteTable("content_briefs", {
   >(),
   notes: text("notes"),
   publishedUrl: text("published_url"),
+  /** Target publish date for the content calendar. */
+  scheduledFor: integer("scheduled_for", { mode: "timestamp" }),
   ...timestamps,
 });
 
@@ -1525,3 +1527,54 @@ export const reportArchives = sqliteTable("report_archives", {
 });
 export type ReportArchive = typeof reportArchives.$inferSelect;
 export type NewReportArchive = typeof reportArchives.$inferInsert;
+
+/**
+ * Chart annotations — manual markers on time-series visualizations
+ * (rank tracker, GSC traffic chart, GA4 chart, CWV trend, etc.).
+ *
+ * Use cases:
+ *   - Algorithm update markers ("Google March 2026 core update")
+ *   - Content events ("Published new pillar page")
+ *   - Technical events ("Migrated to Next.js 16")
+ *   - Outreach milestones ("HARO mention in TechCrunch")
+ *
+ * `scope` controls which charts show the annotation:
+ *   - "global" — shown across all clients (Google algo updates, etc.)
+ *   - "client" — only on this client's charts
+ *   - "keyword" — only on this keyword's rank chart
+ *   - "page" — only on this page's traffic chart
+ */
+export const annotations = sqliteTable("annotations", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  clientId: integer("client_id").references(() => clients.id, {
+    onDelete: "cascade",
+  }),
+  keywordId: integer("keyword_id").references(() => keywords.id, {
+    onDelete: "cascade",
+  }),
+  pageUrl: text("page_url"),
+  scope: text("scope", {
+    enum: ["global", "client", "keyword", "page"],
+  }).notNull(),
+  /** The event date (when to draw the marker). */
+  eventDate: integer("event_date", { mode: "timestamp" }).notNull(),
+  /** Short label shown on the chart. */
+  label: text("label").notNull(),
+  /** Longer description shown on hover / in the activity list. */
+  description: text("description"),
+  /** Kind for color-coding: algo, content, technical, outreach, custom. */
+  kind: text("kind", {
+    enum: ["algo", "content", "technical", "outreach", "custom"],
+  })
+    .notNull()
+    .default("custom"),
+  /** Source — manual / auto from activity log / from algorithm-updates feed. */
+  source: text("source", { enum: ["manual", "auto", "feed"] })
+    .notNull()
+    .default("manual"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+export type Annotation = typeof annotations.$inferSelect;
+export type NewAnnotation = typeof annotations.$inferInsert;

@@ -1,6 +1,7 @@
 "use server";
 
 import { callAI } from "@/lib/ai-call";
+import { saveToolRun } from "@/lib/tool-runs";
 
 export type ContentScoreResult =
   | {
@@ -116,7 +117,7 @@ export async function scoreContent(opts: {
 
   const score = computeScore(stats, parsed);
 
-  return {
+  const result: ContentScoreResult = {
     ok: true,
     score,
     verdict: String(parsed.verdict ?? "—"),
@@ -135,6 +136,13 @@ export async function scoreContent(opts: {
       .slice(0, 10),
     aiInsights: (parsed.aiInsights ?? []).map(String).slice(0, 6),
   };
+  await saveToolRun({
+    toolId: "content-score",
+    label: `${keyword} · ${score}/100`,
+    input: { targetKeyword: keyword, wordCount: stats.wordCount },
+    result,
+  }).catch(() => undefined);
+  return result;
 }
 
 function analyzeStats(content: string, keyword: string): ContentStats {
