@@ -60,6 +60,7 @@ export default async function SettingsPage() {
 
   const dbPath =
     process.env.SEO_DB_PATH ?? path.join(process.cwd(), "data.db");
+  const dbAbsolutePath = path.resolve(dbPath);
 
   const webhookUrl = await getSetting<string>("webhook.url");
   const brandName = await getSetting<string>("brand.name");
@@ -451,9 +452,19 @@ export default async function SettingsPage() {
           </PrivacyLine>
           <PrivacyLine>
             <strong>Your data stays here.</strong> Clients, audits, tasks,
-            keywords — all in <code className="text-xs">data.db</code> on this
-            machine.
+            keywords — all in one SQLite file on this machine.
           </PrivacyLine>
+          <div className="rounded-md bg-white/[0.03] p-3 ring-1 ring-inset ring-white/5 text-xs">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+              Database file
+            </p>
+            <code className="text-xs break-all">{dbAbsolutePath}</code>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Back this single file up to keep everything. Move it to a new
+              machine to migrate. Replaceable via the{" "}
+              <code>SEO_DB_PATH</code> env var.
+            </p>
+          </div>
           <PrivacyLine>
             <strong>Outbound requests are explicit.</strong> Tech detection,
             audits, and keyword research fetch the URLs you tell us to. Nothing

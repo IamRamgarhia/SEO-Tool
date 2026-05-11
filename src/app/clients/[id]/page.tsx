@@ -47,6 +47,7 @@ import { getGoogleConnectionStatus } from "@/lib/google-oauth";
 import { getSetting } from "@/lib/settings-store";
 import { getSmtpConfig } from "@/lib/mailer";
 import { reportSchedules } from "@/db/schema";
+import { ClientToolsLauncher } from "./client-tools-launcher";
 import { headers } from "next/headers";
 import { Suspense } from "react";
 import { Mail, Plug } from "lucide-react";
@@ -451,6 +452,18 @@ export default async function ClientDetailPage({
           </div>
         </div>
       </div>
+
+      {/* TOOLS LAUNCHER — everything pre-wired with this client's URL / id / OAuth */}
+      <ClientToolsLauncher
+        client={{
+          id: client.id,
+          url: client.url,
+          gscProperty: client.gscProperty,
+          gbpUrl: client.gbpUrl,
+          ga4PropertyId: client.ga4PropertyId,
+          wpEndpoint: client.wpEndpoint,
+        }}
+      />
 
       {/* GOOGLE INTEGRATION */}
       <section className="relative overflow-hidden rounded-2xl border border-white/5 bg-card/40 backdrop-blur-md">
