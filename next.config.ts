@@ -15,6 +15,11 @@ const nextConfig: NextConfig = {
     "playwright-core",
     "tesseract.js",
   ],
+
+  // Hide the dev-mode "Compiling…" bottom-left indicator. For self-hosters
+  // running locally this is visual noise. Removed in production builds
+  // automatically; this disables it in dev too.
+  devIndicators: false,
 };
 
 export default nextConfig;

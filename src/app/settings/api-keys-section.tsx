@@ -231,17 +231,23 @@ function ProviderCard({
       <form onSubmit={handleSave} className="space-y-2 px-4 py-3">
         <div className="flex items-center gap-2">
           <input
-            type={show ? "text" : "password"}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
             placeholder={
               isOllama
                 ? "http://localhost:11434"
-                : keyPrefix
-                  ? `Paste your ${name} key (starts with ${keyPrefix}…)`
-                  : `Paste your ${name} key…`
+                : isConfigured
+                  ? "•••••••••• (key saved — paste a new one to replace)"
+                  : keyPrefix
+                    ? `Paste your ${name} key (starts with ${keyPrefix}…)`
+                    : `Paste your ${name} key…`
             }
-            className="flex h-9 flex-1 rounded-md border border-white/10 bg-card/60 px-3 font-mono text-sm shadow-sm focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/40"
+            type={show ? "text" : "password"}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            className={
+              isConfigured && !value
+                ? "flex h-9 flex-1 rounded-md border border-emerald-500/30 bg-emerald-500/[0.04] px-3 font-mono text-sm shadow-sm focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/40"
+                : "flex h-9 flex-1 rounded-md border border-white/10 bg-card/60 px-3 font-mono text-sm shadow-sm focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/40"
+            }
           />
           <button
             type="button"
