@@ -2,6 +2,7 @@
 
 import { desc, eq, ne, count } from "drizzle-orm";
 import { db } from "@/db/client";
+import { callGemini as sharedCallGemini } from "@/lib/providers/gemini";
 import {
   audits,
   auditIssues,
@@ -390,92 +391,15 @@ async function callGemini(
   context: string,
   history: ChatMessage[],
 ): Promise<string | null> {
-  // Gemini doesn't have a "system" role — we prepend the system+context
-  // to the first user turn. Built once and reused across all fallback
-  // attempts so we don't pay for re-serialization.
-  const conversation: { role: string; parts: { text: string }[] }[] = [];
-  let prepended = false;
-  for (const m of history) {
-    if (m.role === "user" && !prepended) {
-      conversation.push({
-        role: "user",
-        parts: [
-          {
-            text: `${SYSTEM_PROMPT}\n\n<context>\n${context.slice(0, MAX_CONTEXT_CHARS)}\n</context>\n\n${m.content}`,
-          },
-        ],
-      });
-      prepended = true;
-    } else {
-      conversation.push({
-        role: m.role === "assistant" ? "model" : "user",
-        parts: [{ text: m.content }],
-      });
-    }
-  }
-  const body = JSON.stringify({
-    contents: conversation,
-    generationConfig: { maxOutputTokens: 800, temperature: 0.3 },
+  return sharedCallGemini({
+    apiKey,
+    system: `${SYSTEM_PROMPT}\n\n<context>\n${context.slice(0, MAX_CONTEXT_CHARS)}\n</context>`,
+    messages: history,
+    maxTokens: 800,
+    temperature: 0.3,
+    timeoutMs: 30_000,
+    caller: "assistant",
   });
-
-  // Try newest free-tier flash models first, fall back on 404/empty.
-  // Per-request AbortController so one model's failure can't poison
-  // the others. Same pattern as ai-call.ts + ai-vision.ts.
-  const tryList = [
-    "gemini-2.5-flash",
-    "gemini-2.0-flash",
-    "gemini-1.5-flash-latest",
-    "gemini-1.5-flash",
-  ];
-  const deadline = Date.now() + 30_000;
-  let lastError = "";
-  for (const model of tryList) {
-    const remaining = deadline - Date.now();
-    if (remaining <= 0) break;
-    const ctl = new AbortController();
-    const t = setTimeout(() => ctl.abort(), Math.min(remaining, 30_000));
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
-      const res = await fetch(url, {
-        method: "POST",
-        signal: ctl.signal,
-        headers: { "content-type": "application/json" },
-        body,
-      });
-      if (res.ok) {
-        const data = (await res.json()) as {
-          candidates?: {
-            content?: { parts?: { text?: string }[] };
-            finishReason?: string;
-          }[];
-          promptFeedback?: { blockReason?: string };
-        };
-        const reply =
-          data.candidates?.[0]?.content?.parts
-            ?.map((p) => p.text ?? "")
-            .join("")
-            .trim() || null;
-        if (reply) return reply;
-        lastError = `Gemini [${model}] empty (${data.promptFeedback?.blockReason ?? data.candidates?.[0]?.finishReason ?? "no candidates"})`;
-        continue;
-      }
-      const errBody = (await res.text().catch(() => "")).slice(0, 240);
-      lastError = `Gemini ${res.status} [${model}]: ${errBody || res.statusText}`;
-      // Key-level failures — no point trying other models with the same key
-      if (res.status === 401 || res.status === 403) break;
-      if (
-        res.status === 400 &&
-        /API_KEY_INVALID|API key not valid/i.test(errBody)
-      )
-        break;
-    } catch (err) {
-      lastError = `Gemini [${model}]: ${(err as Error).message}`;
-    } finally {
-      clearTimeout(t);
-    }
-  }
-  console.error("[assistant] Gemini failed:", lastError);
-  return null;
 }
 
 async function callGroq(

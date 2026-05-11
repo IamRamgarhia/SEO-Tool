@@ -1,6 +1,7 @@
 "use server";
 
 import { createWorker } from "tesseract.js";
+import { callGemini as sharedCallGemini } from "@/lib/providers/gemini";
 
 export type OcrResult =
   | {
@@ -103,36 +104,18 @@ Reply with just the JSON object, no preamble.`;
   try {
     let raw: string | null = null;
 
-    // Free providers first.
+    // Free providers first. Uses the shared Gemini caller so the model
+    // fallback chain + abort handling stays consistent across the app.
     if (!raw && gemini) {
-      const c = new AbortController();
-      const t = setTimeout(() => c.abort(), 25_000);
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${encodeURIComponent(gemini)}`,
-        {
-          method: "POST",
-          signal: c.signal,
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ role: "user", parts: [{ text: prompt }] }],
-            generationConfig: {
-              maxOutputTokens: 1500,
-              temperature: 0.1,
-              responseMimeType: "application/json",
-            },
-          }),
-        },
-      );
-      clearTimeout(t);
-      if (res.ok) {
-        const data = (await res.json()) as {
-          candidates?: { content?: { parts?: { text?: string }[] } }[];
-        };
-        raw =
-          data.candidates?.[0]?.content?.parts
-            ?.map((p) => p.text ?? "")
-            .join("") ?? null;
-      }
+      raw = await sharedCallGemini({
+        apiKey: gemini,
+        system: "",
+        messages: [{ role: "user", content: prompt }],
+        maxTokens: 1500,
+        temperature: 0.1,
+        timeoutMs: 25_000,
+        caller: "import-actions",
+      });
     }
 
     if (!raw && groq) {

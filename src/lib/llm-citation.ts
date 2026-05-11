@@ -6,6 +6,7 @@
  * Free providers prioritised (Gemini, Groq, Perplexity, OpenRouter, Ollama).
  */
 import { getApiKey, getOllamaUrl, type Provider } from "./api-keys";
+import { callGemini as sharedCallGemini } from "./providers/gemini";
 
 export type LlmProvider = Provider | "ollama";
 
@@ -139,33 +140,15 @@ async function callGemini(
   apiKey: string,
   prompt: string,
 ): Promise<string | null> {
-  // Free tier model. Endpoint includes the key in the query string.
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${encodeURIComponent(apiKey)}`;
-  const c = new AbortController();
-  const t = setTimeout(() => c.abort(), 30_000);
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      signal: c.signal,
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: 1500, temperature: 0.2 },
-      }),
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as {
-      candidates?: { content?: { parts?: { text?: string }[] } }[];
-    };
-    const text =
-      data.candidates?.[0]?.content?.parts
-        ?.map((p) => p.text ?? "")
-        .join("")
-        .trim() ?? null;
-    return text || null;
-  } finally {
-    clearTimeout(t);
-  }
+  return sharedCallGemini({
+    apiKey,
+    system: "",
+    messages: [{ role: "user", content: prompt }],
+    maxTokens: 1500,
+    temperature: 0.2,
+    timeoutMs: 30_000,
+    caller: "llm-citation",
+  });
 }
 
 async function callPerplexity(

@@ -1,6 +1,7 @@
 import { getActiveProvider, getApiKey, getOllamaUrl } from "./api-keys";
 import { getSetting } from "./settings-store";
 import { checkMonthlyCap, logAiCall } from "./ai-usage";
+import { callGemini as sharedCallGemini } from "./providers/gemini";
 
 export type AiFeatureName =
   | "exec_summary"
@@ -332,95 +333,21 @@ type CallArgs = AiCallOptions & {
 };
 
 async function callGemini(args: CallArgs): Promise<string | null> {
-  // If the user picked an explicit model, honor it. Otherwise try a list
-  // of known-good free-tier names and use whichever the key can access —
-  // Google renames flash models often enough that hardcoding a single
-  // one bites people whose keys are stuck on an older project.
-  const fallback = [
-    "gemini-2.5-flash",
-    "gemini-2.0-flash",
-    "gemini-1.5-flash-latest",
-    "gemini-1.5-flash",
-  ];
-  const tryList = args.model
-    ? [args.model, ...fallback.filter((m) => m !== args.model)]
-    : fallback;
-
-  // Budget the total time across all fallback attempts. Each request
-  // gets its OWN AbortController so a single failure doesn't cascade
-  // and abort subsequent ones (this was a real bug — sharing one
-  // controller meant the first 404 killed every fallback after it).
-  const deadline = Date.now() + args.timeoutMs;
-  let lastError = "";
-
-  for (const model of tryList) {
-    const remaining = deadline - Date.now();
-    if (remaining <= 0) {
-      lastError = lastError || "Gemini timed out before any model responded";
-      break;
-    }
-    const perRequestTimeout = Math.min(remaining, 30_000);
-    const ctl = new AbortController();
-    const t = setTimeout(() => ctl.abort(), perRequestTimeout);
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(args.apiKey ?? "")}`;
-      const res = await fetch(url, {
-        method: "POST",
-        signal: ctl.signal,
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: "user",
-              parts: [{ text: `${args.system}\n\n${args.user}` }],
-            },
-          ],
-          generationConfig: {
-            maxOutputTokens: args.max,
-            temperature: args.temperature,
-          },
-        }),
-      });
-      if (res.ok) {
-        const data = (await res.json()) as {
-          candidates?: {
-            content?: { parts?: { text?: string }[] };
-            finishReason?: string;
-          }[];
-          promptFeedback?: { blockReason?: string };
-        };
-        const reply =
-          data.candidates?.[0]?.content?.parts
-            ?.map((p) => p.text ?? "")
-            .join("")
-            .trim() || null;
-        if (reply) return reply;
-        // 200 OK but empty body — usually safety filter or maxTokens=0.
-        // Try the next model rather than returning silent failure.
-        const block =
-          data.promptFeedback?.blockReason ??
-          data.candidates?.[0]?.finishReason ??
-          "empty";
-        lastError = `Gemini [${model}] returned empty (${block})`;
-        continue;
-      }
-      const errBody = (await res.text().catch(() => "")).slice(0, 240);
-      lastError = `Gemini ${res.status} [${model}]: ${errBody || res.statusText}`;
-      // Key-level failures: no point trying other models with the same key
-      if (res.status === 401 || res.status === 403) break;
-      if (
-        res.status === 400 &&
-        /API_KEY_INVALID|API key not valid/i.test(errBody)
-      )
-        break;
-    } catch (err) {
-      lastError = `Gemini [${model}]: ${(err as Error).message}`;
-    } finally {
-      clearTimeout(t);
-    }
+  const reply = await sharedCallGemini({
+    apiKey: args.apiKey ?? "",
+    model: args.model,
+    system: args.system,
+    messages: [{ role: "user", content: args.user }],
+    maxTokens: args.max,
+    temperature: args.temperature,
+    timeoutMs: args.timeoutMs,
+    caller: "ai-call",
+  });
+  if (reply === null) {
+    // Surface a throw so the dispatcher's try/catch path is unchanged.
+    throw new Error("Gemini returned no response (see server log for details)");
   }
-
-  throw new Error(lastError || "All Gemini models failed");
+  return reply;
 }
 
 async function callAnthropic(args: CallArgs): Promise<string | null> {
