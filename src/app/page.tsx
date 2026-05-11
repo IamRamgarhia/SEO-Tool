@@ -28,7 +28,6 @@ import { PortfolioTrafficPanel } from "./portfolio-traffic-panel";
 import { PortfolioQuickWinsPanel } from "./portfolio-quick-wins-panel";
 import { MorningBriefing } from "./morning-briefing";
 import { AgencyWeekInReview } from "./agency-week";
-import { WelcomeTour } from "./welcome-tour";
 import { OnboardingChecklistPanel } from "./onboarding-checklist-panel";
 import {
   tickPageMonitorRunner,
@@ -284,13 +283,22 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* ONBOARDING CHECKLIST — persistent progress; auto-hides when done */}
-      <Suspense fallback={null}>
-        <OnboardingChecklistPanel />
-      </Suspense>
-
-      {/* WELCOME TOUR — guides first-run users through the workflow */}
-      {isFresh && <WelcomeTour />}
+      {/* GET STARTED — two-column on fresh state (checklist + features),
+          single column once user has clients (checklist auto-hides when done). */}
+      {isFresh ? (
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <Suspense fallback={null}>
+              <OnboardingChecklistPanel />
+            </Suspense>
+          </div>
+          <FeatureHighlights />
+        </div>
+      ) : (
+        <Suspense fallback={null}>
+          <OnboardingChecklistPanel />
+        </Suspense>
+      )}
 
       {/* MORNING BRIEFING — what changed in last 24h across portfolio */}
       {!isFresh && (
@@ -314,29 +322,9 @@ export default async function DashboardPage() {
         <PortfolioQuickWinsPanel />
       </Suspense>
 
-      {/* GETTING STARTED OR DETAIL PANELS */}
-      {isFresh ? (
-        <section className="rounded-lg border border-border bg-card p-6">
-          <div className="max-w-xl space-y-2">
-            <div className="text-[11px] font-medium text-primary">
-              First steps
-            </div>
-            <h2 className="text-xl font-semibold tracking-tight text-foreground">
-              Add your first client to get started
-            </h2>
-            <p className="text-[13px] text-muted-foreground">
-              We&apos;ll detect the tech stack, generate an actionable task list
-              based on the niche you pick, and run a first audit on demand. No
-              API keys needed.
-            </p>
-            <div className="pt-2">
-              <Link href="/clients/new" className={buttonVariants()}>
-                Add a client
-              </Link>
-            </div>
-          </div>
-        </section>
-      ) : (
+      {/* PRIORITY TASKS + RECENT AUDITS — returning users only.
+          (Fresh state skips this; the onboarding checklist + bento are enough.) */}
+      {!isFresh && (
         <div className="grid gap-4 lg:grid-cols-5">
           {priorityTasks.length > 0 && (
             <section className="rounded-lg border border-border bg-card lg:col-span-3">
@@ -576,5 +564,54 @@ function BentoQuickActions() {
         })}
       </div>
     </section>
+  );
+}
+
+/**
+ * "What you'll unlock" side panel shown on the fresh dashboard. Replaces
+ * the old wordy WelcomeTour with a tighter visual: feature pills + the
+ * "100+ tools" stat, anchoring the page right-hand column.
+ */
+function FeatureHighlights() {
+  const highlights = [
+    { icon: ClipboardList, label: "30+ audit checks", tone: "text-violet-400" },
+    { icon: Search, label: "Daily rank tracker", tone: "text-cyan-400" },
+    { icon: FileDown, label: "White-label reports", tone: "text-amber-400" },
+    { icon: Bot, label: "AI agent + chat", tone: "text-fuchsia-400" },
+    { icon: Link2, label: "Backlink monitor", tone: "text-emerald-400" },
+    { icon: Wrench, label: "100+ free tools", tone: "text-rose-400" },
+  ];
+  return (
+    <aside className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 shadow">
+      <div>
+        <div className="text-xs font-medium uppercase tracking-wider text-violet-400">
+          What you&apos;ll unlock
+        </div>
+        <h3 className="mt-1 text-base font-semibold text-foreground">
+          The full SEO stack, free
+        </h3>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Replaces $140+/mo SaaS. Everything runs on this machine.
+        </p>
+      </div>
+      <ul className="space-y-1.5">
+        {highlights.map(({ icon: Icon, label, tone }) => (
+          <li
+            key={label}
+            className="flex items-center gap-2 rounded-md bg-muted/30 px-2.5 py-1.5 text-sm text-foreground"
+          >
+            <Icon className={`size-3.5 ${tone}`} />
+            <span>{label}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-auto rounded-md border border-violet-500/30 bg-violet-500/5 p-3">
+        <div className="text-xs font-medium text-violet-300">No paid APIs</div>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Browser mode + free Google APIs cover everything. BYO key only if
+          you want premium SERP data.
+        </p>
+      </div>
+    </aside>
   );
 }
