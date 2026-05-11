@@ -187,6 +187,13 @@ export default async function LinkBuildingPage({
               <Compass className="size-3" />
               Find new prospects
             </Link>
+            <Link
+              href="/link-building/library"
+              className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-emerald-300 ring-1 ring-inset ring-emerald-500/30 hover:bg-emerald-500/20"
+            >
+              <ExternalLink className="size-3" />
+              Curated library (30+ countries)
+            </Link>
           </div>
         }
       />

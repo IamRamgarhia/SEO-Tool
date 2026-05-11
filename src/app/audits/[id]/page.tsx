@@ -18,6 +18,7 @@ import { audits, auditIssues, clients } from "@/db/schema";
 import { ScoreGauge } from "@/components/ui/score-gauge";
 import { Term } from "@/components/ui/term";
 import { FixWizard } from "@/components/fix-wizard";
+import { IssueExplainer } from "@/components/issue-explainer";
 import { isFixable } from "@/lib/fix-suggestions";
 import { setStatusForType } from "../issue-actions";
 
@@ -394,6 +395,13 @@ export default async function AuditDetailPage({
                           )}
                         </ul>
                       </details>
+
+                      <div className="mt-2">
+                        <IssueExplainer
+                          issueType={g.type}
+                          url={g.affectedUrls[0]}
+                        />
+                      </div>
 
                       {isFixable(g.type) && g.affectedUrls.length > 0 && (
                         <FixWizard

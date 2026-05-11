@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { usePathname } from "next/navigation";
 import {
   Bot,
+  HelpCircle,
   Send,
   X,
   Sparkles,
@@ -18,6 +20,22 @@ const SUGGESTIONS = [
   "What should I focus on first this week?",
 ];
 
+function pathToFriendly(path: string): string {
+  if (path === "/") return "the dashboard";
+  const parts = path.split("/").filter(Boolean);
+  if (parts[0] === "clients" && parts[1]) return "a client page";
+  if (parts[0] === "tools" && parts[1])
+    return `the ${parts[1].replace(/-/g, " ")} tool`;
+  if (parts[0] === "audits") return "an audit page";
+  if (parts[0] === "keywords") return "the keywords page";
+  if (parts[0] === "backlinks" || parts[0] === "link-building")
+    return "the backlinks page";
+  if (parts[0] === "competitors") return "the competitors page";
+  if (parts[0] === "content") return "the content page";
+  if (parts[0] === "reports") return "the reports page";
+  return `the ${parts[0] ?? "current"} page`;
+}
+
 export function AIAssistant() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -26,6 +44,8 @@ export function AIAssistant() {
   const [provider, setProvider] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname() ?? "/";
+  const pageContext = pathToFriendly(pathname);
 
   // Scroll to bottom on new message
   useEffect(() => {
@@ -58,19 +78,36 @@ export function AIAssistant() {
 
   return (
     <>
-      {/* Floating trigger */}
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label="AI assistant"
-        className="fixed bottom-5 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 via-fuchsia-500 to-indigo-600 text-white shadow-xl shadow-violet-500/40 ring-1 ring-inset ring-white/30 transition-transform hover:scale-110"
-      >
-        <Sparkles className="size-5" />
-        <span className="absolute -top-1 -right-1 flex size-3">
-          <span className="absolute inline-flex size-full animate-ping rounded-full bg-violet-400 opacity-75" />
-          <span className="relative inline-flex size-3 rounded-full bg-violet-300" />
-        </span>
-      </button>
+      {/* Floating triggers — main AI assistant + "I'm stuck" shortcut */}
+      <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            setMessages([]);
+            send(
+              `I'm stuck on ${pageContext} (path: ${pathname}). Briefly: what is this for, what should I be doing here, and what are the 2-3 most useful actions I can take right now?`,
+            );
+            setOpen(true);
+          }}
+          aria-label="I'm stuck — help me with this page"
+          className="flex h-10 items-center gap-1.5 rounded-full bg-amber-500/15 px-3 text-xs font-medium text-amber-300 ring-1 ring-inset ring-amber-500/30 shadow-lg shadow-amber-500/20 hover:bg-amber-500/25"
+        >
+          <HelpCircle className="size-4" />
+          I'm stuck
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label="AI assistant"
+          className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 via-fuchsia-500 to-indigo-600 text-white shadow-xl shadow-violet-500/40 ring-1 ring-inset ring-white/30 transition-transform hover:scale-110"
+        >
+          <Sparkles className="size-5" />
+          <span className="absolute -top-1 -right-1 flex size-3">
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-violet-400 opacity-75" />
+            <span className="relative inline-flex size-3 rounded-full bg-violet-300" />
+          </span>
+        </button>
+      </div>
 
       {open && (
         <div

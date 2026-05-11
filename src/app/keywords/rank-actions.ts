@@ -34,6 +34,7 @@ export type CheckRankResult =
 
 export async function checkRankAction(
   keywordId: number,
+  device: "desktop" | "mobile" = "desktop",
 ): Promise<CheckRankResult> {
   if (!Number.isFinite(keywordId) || keywordId <= 0) {
     return { ok: false, error: "Invalid keyword id" };
@@ -87,6 +88,7 @@ export async function checkRankAction(
 
   const result = await checkRank(row.query, row.clientUrl, {
     screenshot: wantScreenshot,
+    device,
     ...locale,
   });
 
@@ -95,6 +97,7 @@ export async function checkRankAction(
     position: result.position,
     url: result.url,
     checkedAt: result.checkedAt,
+    device,
   });
 
   // Persist screenshot if we got one (or if position changed meaningfully)

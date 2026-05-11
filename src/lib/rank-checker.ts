@@ -9,10 +9,19 @@ export type RankCheckResult = {
   position: number | null; // null if not found in top 100
   url: string | null;
   checkedAt: Date;
+  device: "desktop" | "mobile";
   resultsScanned: number;
   screenshotBuffer?: Buffer;
   error?: string;
 };
+
+/**
+ * Realistic mobile UA + viewport for mobile rank checks. Pixel 7 Pro user
+ * agent — Google serves mobile SERP layout for known mobile fingerprints.
+ */
+const MOBILE_UA =
+  "Mozilla/5.0 (Linux; Android 13; Pixel 7 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.6723.91 Mobile Safari/537.36";
+const MOBILE_VIEWPORT = { width: 412, height: 915 };
 
 function normalizeDomain(input: string): string {
   return input
@@ -51,6 +60,7 @@ async function checkOnGoogle(
   domain: string,
   withScreenshot = false,
   locale?: { country?: string; language?: string; city?: string },
+  device: "desktop" | "mobile" = "desktop",
 ): Promise<RankCheckResult> {
   return withBrowserContext(
     async (context) => {
@@ -80,6 +90,7 @@ async function checkOnGoogle(
         position: null,
         url: null,
         checkedAt,
+        device,
         resultsScanned: 0,
         error: captchaUserMessage(cap.reason),
       };
@@ -127,6 +138,7 @@ async function checkOnGoogle(
           position: i + 1,
           url: filtered[i],
           checkedAt,
+          device,
           resultsScanned,
           screenshotBuffer,
         };
@@ -140,6 +152,7 @@ async function checkOnGoogle(
       position: null,
       url: null,
       checkedAt,
+      device,
       resultsScanned,
       screenshotBuffer,
     };
@@ -151,6 +164,7 @@ async function checkOnGoogle(
           position: null,
           url: null,
           checkedAt,
+          device,
           resultsScanned,
           error: (err as Error).message,
         };
@@ -158,13 +172,16 @@ async function checkOnGoogle(
         await page.close().catch(() => {});
       }
     },
-    { viewport: { width: 1280, height: 900 } },
+    device === "mobile"
+      ? { viewport: MOBILE_VIEWPORT, userAgent: MOBILE_UA }
+      : { viewport: { width: 1280, height: 900 } },
   );
 }
 
 async function checkOnDuckDuckGo(
   query: string,
   domain: string,
+  device: "desktop" | "mobile" = "desktop",
 ): Promise<RankCheckResult> {
   return withBrowserContext(
     async (context) => {
@@ -200,6 +217,7 @@ async function checkOnDuckDuckGo(
           position: i + 1,
           url: filtered[i],
           checkedAt,
+          device,
           resultsScanned,
         };
       }
@@ -212,6 +230,7 @@ async function checkOnDuckDuckGo(
       position: null,
       url: null,
       checkedAt,
+      device,
       resultsScanned,
     };
   } catch (err) {
@@ -222,6 +241,7 @@ async function checkOnDuckDuckGo(
           position: null,
           url: null,
           checkedAt,
+          device,
           resultsScanned,
           error: (err as Error).message,
         };
@@ -245,9 +265,11 @@ export async function checkRank(
     country?: string;
     language?: string;
     city?: string;
+    device?: "desktop" | "mobile";
   } = {},
 ): Promise<RankCheckResult> {
   const domain = normalizeDomain(rawDomain);
+  const device = options.device ?? "desktop";
   if (!domain) {
     return {
       query,
@@ -256,6 +278,7 @@ export async function checkRank(
       position: null,
       url: null,
       checkedAt: new Date(),
+      device,
       resultsScanned: 0,
       error: "Empty domain",
     };
@@ -271,9 +294,10 @@ export async function checkRank(
     domain,
     options.screenshot ?? false,
     locale,
+    device,
   );
   if (google.error || google.resultsScanned === 0) {
-    const ddg = await checkOnDuckDuckGo(query, domain);
+    const ddg = await checkOnDuckDuckGo(query, domain, device);
     // Prefer DDG result if Google was blocked, else return Google's null result
     if (!ddg.error || google.error) return ddg;
   }

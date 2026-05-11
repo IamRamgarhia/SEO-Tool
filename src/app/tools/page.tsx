@@ -628,6 +628,14 @@ const tools = [
     accent: "emerald",
   },
   {
+    href: "/tools/meta-tag-generator",
+    icon: Code2,
+    title: "Meta tag generator",
+    description:
+      "Generates 3 angle-varied title + meta description options for any page, with SERP preview + Open Graph tags. Copy-paste HTML ready.",
+    accent: "violet",
+  },
+  {
     href: "/tools/reddit-research",
     icon: Flame,
     title: "Reddit research",

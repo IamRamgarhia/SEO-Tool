@@ -756,6 +756,13 @@ export const keywordRankings = sqliteTable("keyword_rankings", {
   checkedAt: integer("checked_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),
+  // Device the rank was checked on. "desktop" is the historic default —
+  // pre-existing rows without this column read as "desktop". Mobile
+  // rankings often diverge by 1-3 positions due to mobile-specific SERP
+  // features (AI Overview, Local Pack injected higher on mobile).
+  device: text("device", { enum: ["desktop", "mobile"] })
+    .notNull()
+    .default("desktop"),
   // SERP feature flags captured at the same time as the rank — populated when
   // the rank check is run via the SERP scanner (Playwright). Default 0 so
   // rows from older browser-mode checks remain valid.

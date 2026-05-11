@@ -195,4 +195,5 @@ export const TOOL_LABELS: Record<string, string> = {
   sitemap: "Sitemap generator",
   wayback: "Wayback Machine snapshots",
   youtube: "YouTube research",
+  "meta-tag-generator": "Meta tag generator",
 };
