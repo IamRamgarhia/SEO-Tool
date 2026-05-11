@@ -9,6 +9,7 @@ import {
   writeGuestPost,
 } from "@/lib/guest-post-writer";
 import { getGuestPostSiteById } from "@/lib/guest-post-sites";
+import { callAI } from "@/lib/ai-call";
 
 export type GenerateState =
   | {
@@ -195,5 +196,110 @@ export async function listDraftsForClient(clientId: number) {
     .from(guestPostDrafts)
     .where(eq(guestPostDrafts.clientId, clientId))
     .orderBy(desc(guestPostDrafts.createdAt));
+}
+
+export type SuggestTitlesState =
+  | { ok: true; titles: { title: string; angle: string }[] }
+  | { ok: false; error: string }
+  | null;
+
+/**
+ * Suggest 5-7 strong guest-post titles tailored to the target site's style
+ * + the client's niche + a target keyword the client wants to rank for.
+ *
+ * The AI is told the site's house style + must-do / must-avoid rules, so
+ * titles come back already shaped for that publication. Each title is
+ * paired with a one-sentence "angle" explaining why it works.
+ */
+export async function suggestGuestPostTitles(
+  _prev: SuggestTitlesState,
+  formData: FormData,
+): Promise<SuggestTitlesState> {
+  const clientId = Number(formData.get("clientId"));
+  const siteId = String(formData.get("siteId") ?? "");
+  const targetKeyword = String(formData.get("targetKeyword") ?? "").trim();
+  const additionalContext = String(
+    formData.get("additionalContext") ?? "",
+  ).trim();
+
+  if (!Number.isFinite(clientId)) return { ok: false, error: "Bad client id." };
+  if (!siteId) return { ok: false, error: "Pick a target platform first." };
+  if (!targetKeyword)
+    return { ok: false, error: "A target keyword guides the titles." };
+
+  const site = getGuestPostSiteById(siteId);
+  if (!site) return { ok: false, error: `Unknown platform: ${siteId}` };
+
+  const [client] = await db
+    .select()
+    .from(clients)
+    .where(eq(clients.id, clientId))
+    .limit(1);
+  if (!client) return { ok: false, error: "Client not found." };
+
+  const system = `You are a senior editor for ${site.name} (${site.domain}). Suggest exactly 6 guest-post titles a contributor could pitch.
+
+Site house rules:
+- Tone: ${site.style.tone}
+- Voice: ${site.style.voice}
+- Target length: ${site.style.wordCount.ideal} words (range ${site.style.wordCount.min}-${site.style.wordCount.max})
+- MUST DO: ${site.style.mustDo.join("; ") || "engage on the topic"}
+- MUST AVOID: ${site.style.mustAvoid.join("; ") || "fluff"}
+
+Output STRICT JSON, no preamble, no markdown fences:
+{
+  "titles": [
+    { "title": "<exact pitch-ready title, 8-12 words>", "angle": "<one sentence explaining why it works for this site>" }
+  ]
+}
+
+Rules:
+- 6 titles total. No fewer.
+- Each title must be distinct in angle (not just rewording).
+- Mix types: one How-to, one Listicle, one Contrarian take, one Case-study, one Beginner-guide, one Deep-research.
+- Embed the target keyword (or a close variant) naturally in at least 4 of the 6.
+- No clickbait. No "ultimate guide" / "you won't believe" tropes.`;
+
+  const user = `Client: ${client.name} (${client.url})${client.niche ? `, niche: ${client.niche}` : ""}${client.city ? `, city: ${client.city}` : ""}
+Target keyword: ${targetKeyword}
+${additionalContext ? `\nExtra context: ${additionalContext}` : ""}
+
+Return the JSON.`;
+
+  const raw = await callAI({
+    system,
+    user,
+    maxTokens: 1200,
+    temperature: 0.7,
+    feature: "content_idea",
+    ignoreCreditSaver: true,
+  });
+  if (!raw) {
+    return {
+      ok: false,
+      error:
+        "AI provider not configured — set one up in Settings → AI first.",
+    };
+  }
+
+  const cleaned = raw
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+  try {
+    const parsed = JSON.parse(cleaned) as {
+      titles?: { title: string; angle: string }[];
+    };
+    if (!parsed.titles || parsed.titles.length === 0) {
+      return { ok: false, error: "AI returned no titles. Try again." };
+    }
+    return { ok: true, titles: parsed.titles };
+  } catch {
+    return {
+      ok: false,
+      error: "Couldn't parse the AI's response — try again.",
+    };
+  }
 }
 

@@ -21,8 +21,10 @@ import {
   generateGuestPost,
   setDraftLiveUrl,
   setDraftStatus,
+  suggestGuestPostTitles,
   updateDraftMarkdown,
   type GenerateState,
+  type SuggestTitlesState,
 } from "./actions";
 import {
   difficultyTone,
@@ -34,6 +36,107 @@ import {
   AiModelPicker,
   type ModelSelection,
 } from "@/components/ai-model-picker";
+
+function TitleSuggester({
+  clientId,
+  siteId,
+  onPick,
+}: {
+  clientId: number;
+  siteId: string;
+  onPick: (title: string) => void;
+}) {
+  const [state, formAction, pending] = useActionState<SuggestTitlesState, FormData>(
+    suggestGuestPostTitles,
+    null,
+  );
+
+  return (
+    <div className="rounded-md bg-violet-500/[0.05] p-3 ring-1 ring-inset ring-violet-500/20 space-y-2">
+      <header className="flex items-center justify-between gap-2">
+        <div>
+          <p className="text-xs font-medium text-violet-200">
+            Stuck on a title? Let AI propose 6.
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            Tailored to {siteId}&apos;s house style + your client&apos;s niche.
+          </p>
+        </div>
+      </header>
+      <form action={formAction} className="space-y-2">
+        <input type="hidden" name="clientId" value={clientId} />
+        <input type="hidden" name="siteId" value={siteId} />
+        <div className="grid gap-2 md:grid-cols-[2fr_3fr]">
+          <input
+            name="targetKeyword"
+            required
+            placeholder="Target keyword (e.g. saas onboarding)"
+            className="h-8 w-full rounded-md border border-white/10 bg-card/60 px-2.5 text-xs focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/40"
+          />
+          <input
+            name="additionalContext"
+            placeholder="Optional extra context (audience, angle hint…)"
+            className="h-8 w-full rounded-md border border-white/10 bg-card/60 px-2.5 text-xs focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/40"
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={pending || !siteId}
+          className="inline-flex h-7 items-center gap-1 rounded-md bg-violet-500/15 px-2.5 text-[11px] font-medium text-violet-200 ring-1 ring-inset ring-violet-500/30 hover:bg-violet-500/25 disabled:opacity-50"
+        >
+          {pending ? (
+            <>
+              <Loader2 className="size-3 animate-spin" />
+              Generating…
+            </>
+          ) : (
+            <>
+              <Sparkles className="size-3" />
+              Suggest 6 titles
+            </>
+          )}
+        </button>
+      </form>
+
+      {state && !state.ok && (
+        <p className="rounded-md bg-rose-500/10 px-2 py-1 text-[11px] text-rose-300 ring-1 ring-inset ring-rose-500/30">
+          {state.error}
+        </p>
+      )}
+
+      {state && state.ok && (
+        <div className="space-y-1.5">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Click a title to use it as the topic
+          </p>
+          <ul className="space-y-1">
+            {state.titles.map((t, i) => (
+              <li key={i}>
+                <button
+                  type="button"
+                  onClick={() => onPick(t.title)}
+                  className="group flex w-full items-start gap-2 rounded-md border border-white/5 bg-card/40 px-2.5 py-2 text-left text-xs transition-colors hover:border-violet-500/30 hover:bg-violet-500/10"
+                >
+                  <span className="mt-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-violet-500/20 text-[10px] font-bold text-violet-200">
+                    {i + 1}
+                  </span>
+                  <span className="min-w-0 flex-1 space-y-0.5">
+                    <span className="block font-medium text-foreground/95 group-hover:text-violet-200">
+                      {t.title}
+                    </span>
+                    <span className="block text-[11px] text-muted-foreground">
+                      {t.angle}
+                    </span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function GuestPostComposer({
   clientId,
@@ -111,6 +214,7 @@ function NewDraft({
   const [siteId, setSiteId] = useState<string>(
     recommendedSites[0]?.id ?? otherSites[0]?.id ?? "medium",
   );
+  const [topic, setTopic] = useState("");
   const [modelSel, setModelSel] = useState<ModelSelection>({
     provider: undefined,
     model: undefined,
@@ -207,11 +311,19 @@ function NewDraft({
           </div>
         )}
 
+        <TitleSuggester
+          clientId={clientId}
+          siteId={siteId}
+          onPick={setTopic}
+        />
+
         <div className="grid gap-3 md:grid-cols-2">
           <label className="space-y-1 text-xs">
             <span className="text-muted-foreground">Topic *</span>
             <input
               name="topic"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
               required
               placeholder="e.g. how we cut SaaS onboarding from 12 days to 2"
               className="h-9 w-full rounded-md border border-white/10 bg-card/60 px-3 text-sm focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/40"
