@@ -22,6 +22,7 @@ import {
   Send,
   Receipt,
   Link2,
+  Wrench,
 } from "lucide-react";
 import { search, type SearchHit } from "@/app/search/actions";
 
@@ -35,6 +36,7 @@ const typeIcon: Record<SearchHit["type"], typeof Users> = {
   outreach: Send,
   invoice: Receipt,
   resource: Link2,
+  tool: Wrench,
 };
 
 const typeTone: Record<SearchHit["type"], string> = {
@@ -47,6 +49,7 @@ const typeTone: Record<SearchHit["type"], string> = {
   outreach: "text-violet-300 bg-violet-500/15 ring-violet-500/30",
   invoice: "text-amber-300 bg-amber-500/15 ring-amber-500/30",
   resource: "text-emerald-300 bg-emerald-500/15 ring-emerald-500/30",
+  tool: "text-cyan-300 bg-cyan-500/15 ring-cyan-500/30",
 };
 
 const typeLabel: Record<SearchHit["type"], string> = {
@@ -59,6 +62,7 @@ const typeLabel: Record<SearchHit["type"], string> = {
   outreach: "Outreach",
   invoice: "Invoice",
   resource: "Resource",
+  tool: "Tool",
 };
 
 export function SearchPalette() {

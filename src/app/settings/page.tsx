@@ -42,6 +42,7 @@ import { db as dbClient } from "@/db/client";
 import { apiKeys, inboundWebhooks } from "@/db/schema";
 import { desc as descSql } from "drizzle-orm";
 import { InboundWebhooksManager } from "./inbound-webhooks/manager";
+import { UpdateCard } from "./update-card";
 
 export default async function SettingsPage() {
   const [{ value: clientCount }] = await db
@@ -102,6 +103,9 @@ export default async function SettingsPage() {
         icon={SettingsIcon}
         accent="violet"
       />
+
+      {/* Updates */}
+      <UpdateCard />
 
       {/* Workspace */}
       <section className="relative overflow-hidden rounded-2xl border border-white/5 bg-card/40 backdrop-blur-md">

@@ -13,3 +13,26 @@
 *.pem
 *.tsbuildinfo
 next-env.d.ts
+
+# user data — NEVER commit. Each install creates its own fresh data.db.
+data.db
+data.db-shm
+data.db-wal
+data.db.bak
+*.sqlite
+*.sqlite-*
+/data/
+
+# user env / secrets
+.env
+.env.local
+.env.*.local
+
+# dev server runtime artifacts
+dev-server.log
+dev-server.err.log
+.dev-server.pid
+.dev-server.cmd
+
+# desktop guides regenerated per install
+*-Welcome.txt

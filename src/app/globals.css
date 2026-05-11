@@ -129,13 +129,13 @@
   html {
     @apply font-sans;
     color-scheme: dark;
-    /* Bigger base so the whole UI breathes. 18px lifts every rem-based size
+    /* Bigger base so the whole UI breathes. 19px lifts every rem-based size
        proportionally — labels, paragraphs, buttons, inputs all grow. */
-    font-size: 18px;
+    font-size: 19px;
   }
   body {
     @apply bg-background text-foreground;
-    /* Body text at full 1rem (= 18px) for comfortable reading */
+    /* Body text at full 1rem (= 19px) for comfortable reading */
     font-size: 1rem;
     line-height: 1.6;
     letter-spacing: -0.005em;
@@ -191,6 +191,31 @@
   ::selection {
     background-color: oklch(0.7 0.22 275 / 0.4);
     color: oklch(0.99 0 0);
+  }
+
+  /* Override Tailwind's text-xs / text-sm so the densest labels read
+     comfortably. Default Tailwind is 0.75rem / 0.875rem; we lift those
+     a notch for legibility. Overridden in Pro Mode below for power
+     users who want denser data tables. */
+  html[data-ui-mode="guided"] .text-xs,
+  html:not([data-ui-mode]) .text-xs {
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+  html[data-ui-mode="guided"] .text-sm,
+  html:not([data-ui-mode]) .text-sm {
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+  html[data-ui-mode="guided"] .text-\[10px\],
+  html:not([data-ui-mode]) .text-\[10px\] {
+    font-size: 0.72rem;
+    line-height: 1.3;
+  }
+  html[data-ui-mode="guided"] .text-\[11px\],
+  html:not([data-ui-mode]) .text-\[11px\] {
+    font-size: 0.78rem;
+    line-height: 1.4;
   }
   /* Crisper focus rings — premium feel */
   *:focus-visible {

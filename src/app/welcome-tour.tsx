@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  Bot,
   ClipboardCheck,
   FileText,
   ListChecks,
@@ -11,24 +12,33 @@ import {
 const steps = [
   {
     n: 1,
-    icon: Users,
-    title: "Add your first client",
-    body: "Paste a URL — we auto-extract brand name, logo, NAP, social links, and detect their tech stack in 3 seconds.",
-    cta: "Add client",
-    href: "/clients/new",
+    icon: Bot,
+    title: "Connect an AI provider",
+    body: "Most tools (audits, content, schema, code generator) need AI. Pick free local Ollama for full privacy, or paste a Groq / Gemini / OpenRouter free-tier key. Anthropic / OpenAI work too.",
+    cta: "Set up AI",
+    href: "/settings#ai",
     tone: "violet",
   },
   {
     n: 2,
+    icon: Users,
+    title: "Add your first client",
+    body: "Paste a URL — we auto-extract brand name, logo, NAP, social links, and detect their tech stack in 3 seconds. Almost every tool gets way better once you have a client.",
+    cta: "Add client",
+    href: "/clients/new",
+    tone: "cyan",
+  },
+  {
+    n: 3,
     icon: Sparkles,
     title: "Connect Google (GSC + GA4)",
     body: "One OAuth click reveals real ranking + traffic data — no scraping, no API costs. Skip if you only want technical audits.",
     cta: "Set up Google",
     href: "/settings/google",
-    tone: "cyan",
+    tone: "emerald",
   },
   {
-    n: 3,
+    n: 4,
     icon: ClipboardCheck,
     title: "Run an audit",
     body: "30+ checks for indexability, schema, Core Web Vitals, hreflang, security headers, broken links — all locally, no third-party APIs.",
@@ -37,16 +47,16 @@ const steps = [
     tone: "amber",
   },
   {
-    n: 4,
+    n: 5,
     icon: ListChecks,
     title: "Install a task playbook",
     body: "Pre-built routines: weekly health check, monthly content refresh, quarterly review. One click creates every task with staggered due dates.",
     cta: "Browse playbooks",
     href: "/tasks/templates",
-    tone: "emerald",
+    tone: "violet",
   },
   {
-    n: 5,
+    n: 6,
     icon: FileText,
     title: "Generate the first report",
     body: "AI executive summary, white-label branding, PDF or magic-link client portal. Goes from 6 hours/month to 25 minutes/month.",
@@ -55,13 +65,13 @@ const steps = [
     tone: "rose",
   },
   {
-    n: 6,
+    n: 7,
     icon: Workflow,
     title: "Set up automations",
     body: "8 prebuilt templates — rank drops → Slack, page changes → review task, audit failures → alerts. Replaces n8n / Zapier subscriptions.",
     cta: "Browse automations",
     href: "/automations/templates",
-    tone: "violet",
+    tone: "cyan",
   },
 ];
 
