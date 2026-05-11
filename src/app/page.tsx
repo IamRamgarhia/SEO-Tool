@@ -22,6 +22,7 @@ import { PortfolioQuickWinsPanel } from "./portfolio-quick-wins-panel";
 import { MorningBriefing } from "./morning-briefing";
 import { AgencyWeekInReview } from "./agency-week";
 import { WelcomeTour } from "./welcome-tour";
+import { OnboardingChecklistPanel } from "./onboarding-checklist-panel";
 import {
   tickPageMonitorRunner,
   tickScheduleRunner,
@@ -275,6 +276,11 @@ export default async function DashboardPage() {
           spark={scoreTimeline.length > 1 ? scoreTimeline : undefined}
         />
       </div>
+
+      {/* ONBOARDING CHECKLIST — persistent progress; auto-hides when done */}
+      <Suspense fallback={null}>
+        <OnboardingChecklistPanel />
+      </Suspense>
 
       {/* WELCOME TOUR — guides first-run users through the workflow */}
       {isFresh && <WelcomeTour />}

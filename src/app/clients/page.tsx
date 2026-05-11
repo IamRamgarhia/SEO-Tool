@@ -54,6 +54,15 @@ export default async function ClientsPage() {
               </Link>
             )}
             <ImportClientsButton />
+            <a
+              href="/clients/export.csv"
+              className={buttonVariants({
+                variant: "outline",
+                className: "border-white/10 bg-white/5",
+              })}
+            >
+              Export CSV
+            </a>
             <Link
               href="/clients/new"
               className={buttonVariants({

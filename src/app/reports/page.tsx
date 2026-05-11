@@ -79,6 +79,14 @@ export default async function ReportsIndexPage() {
         description="Pick a client to download their branded SEO report as PDF, view a live preview, or grab the raw data as CSV."
         icon={FileText}
         accent="cyan"
+        actions={
+          <a
+            href="/reports/export.csv"
+            className="inline-flex h-9 items-center rounded-md border border-white/10 bg-white/5 px-3 text-xs font-medium text-muted-foreground hover:bg-white/10 hover:text-foreground"
+          >
+            Export all CSV
+          </a>
+        }
       />
       <ClientToolGrid cards={cards} basePath="/reports/c" />
     </div>

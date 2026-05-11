@@ -6,7 +6,6 @@ import {
   useMemo,
   useRef,
   useState,
-  useTransition,
 } from "react";
 import Link from "next/link";
 import {
@@ -16,6 +15,7 @@ import {
   AlertTriangle,
   Activity,
   Inbox,
+  Loader2,
 } from "lucide-react";
 import {
   recentNotifications,
@@ -27,34 +27,50 @@ const LAST_SEEN_KEY = "seo-notifications-last-seen";
 export function NotificationsBell() {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Notification[] | null>(null);
+  const [loading, setLoading] = useState(false);
   const [lastSeenMs, setLastSeenMs] = useState<number>(0);
-  const [pending, startTransition] = useTransition();
   const popoverRef = useRef<HTMLDivElement>(null);
+  // Guard against concurrent loads triggering setState loops.
+  const inFlightRef = useRef(false);
 
-  // Initialise lastSeen from localStorage. SSR-safe: only run client-side.
+  // Initialise lastSeen from localStorage on mount.
   useEffect(() => {
-    const t = setTimeout(() => {
-      try {
-        const v = window.localStorage.getItem(LAST_SEEN_KEY);
-        if (v) setLastSeenMs(parseInt(v, 10));
-      } catch {
-        // ignore
+    try {
+      const v = window.localStorage.getItem(LAST_SEEN_KEY);
+      if (v) {
+        const parsed = parseInt(v, 10);
+        if (Number.isFinite(parsed)) setLastSeenMs(parsed);
       }
-    }, 0);
-    return () => clearTimeout(t);
+    } catch {
+      // ignore
+    }
   }, []);
 
-  // Initial + periodic reload
-  const load = useCallback(() => {
-    startTransition(async () => {
+  // Plain async loader — no startTransition. The previous version called
+  // startTransition during render in some paths (Next 16 strict mode flags
+  // this) which produced the "Cannot call startTransition while rendering"
+  // error and a setState loop. Plain useState + ref guard is enough here.
+  const load = useCallback(async () => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+    setLoading(true);
+    try {
       const r = await recentNotifications();
       setItems(r);
-    });
+    } catch {
+      // Leave whatever items we had — never crash the bell.
+    } finally {
+      setLoading(false);
+      inFlightRef.current = false;
+    }
   }, []);
 
+  // Initial load + 60s polling. Effects run AFTER render, never during it.
   useEffect(() => {
-    load();
-    const t = setInterval(load, 60_000);
+    void load();
+    const t = setInterval(() => {
+      void load();
+    }, 60_000);
     return () => clearInterval(t);
   }, [load]);
 
@@ -78,27 +94,28 @@ export function NotificationsBell() {
     return items.filter((n) => n.at.getTime() > lastSeenMs).length;
   }, [items, lastSeenMs]);
 
-  const markAllRead = () => {
+  const markAllRead = useCallback(() => {
     const now = Date.now();
-    setLastSeenMs(now);
+    setLastSeenMs((prev) => (prev >= now ? prev : now));
     try {
       window.localStorage.setItem(LAST_SEEN_KEY, String(now));
     } catch {
       // ignore
     }
-  };
+  }, []);
 
-  const handleOpen = () => {
-    setOpen((v) => {
-      const next = !v;
-      if (next) {
-        // Refresh on open and mark all as read after a short delay
-        load();
-        setTimeout(markAllRead, 800);
-      }
-      return next;
-    });
-  };
+  const handleOpen = useCallback(() => {
+    setOpen((prev) => !prev);
+  }, []);
+
+  // When the panel actually opens, kick off a refresh + schedule mark-read.
+  // useEffect is the right place — render-phase side effects break in React 19.
+  useEffect(() => {
+    if (!open) return;
+    void load();
+    const t = setTimeout(markAllRead, 1500);
+    return () => clearTimeout(t);
+  }, [open, load, markAllRead]);
 
   return (
     <div className="relative" ref={popoverRef}>
@@ -124,16 +141,16 @@ export function NotificationsBell() {
                 Recent activity from your data
               </div>
             </div>
-            {pending && (
-              <Activity className="size-3 animate-pulse text-muted-foreground" />
+            {loading && (
+              <Loader2 className="size-3 animate-spin text-muted-foreground" />
             )}
           </div>
           <div className="max-h-96 overflow-y-auto">
-            {items === null ? (
+            {items === null && loading ? (
               <div className="px-4 py-10 text-center text-xs text-muted-foreground">
                 Loading…
               </div>
-            ) : items.length === 0 ? (
+            ) : items === null || items.length === 0 ? (
               <div className="flex flex-col items-center gap-3 px-5 py-10 text-center">
                 <div className="grid size-10 place-items-center rounded-xl bg-violet-500/10 ring-1 ring-inset ring-violet-500/30">
                   <Inbox className="size-5 text-violet-300" />
