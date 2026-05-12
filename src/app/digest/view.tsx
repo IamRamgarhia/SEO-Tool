@@ -195,6 +195,7 @@ export function DigestView({
                   <th className="px-4 py-2 text-left">Client</th>
                   <th className="px-4 py-2 text-right">Score</th>
                   <th className="px-4 py-2 text-right">Δ</th>
+                  <th className="px-4 py-2 text-left">Trend</th>
                   <th className="px-4 py-2 text-right">Tasks</th>
                   <th className="px-4 py-2 text-left">Wins</th>
                   <th className="px-4 py-2 text-left">Concerns</th>
@@ -221,6 +222,9 @@ export function DigestView({
                       {r.scoreDelta !== null
                         ? `${r.scoreDelta > 0 ? "+" : ""}${r.scoreDelta}`
                         : "—"}
+                    </td>
+                    <td className="px-4 py-1.5">
+                      <Sparkbar values={r.scoreHistory} />
                     </td>
                     <td className="px-4 py-1.5 text-right tabular-nums text-muted-foreground">
                       {r.tasksDoneThisWeek}
@@ -254,6 +258,43 @@ export function DigestView({
         />
       )}
     </>
+  );
+}
+
+/**
+ * Per-row health-score trend, 8 bars tall. Mirrors the inline sparkbar
+ * in the HTML email so the in-app summary tab matches what recipients
+ * will see in their inbox. Color follows direction: emerald if last is
+ * higher, rose if lower, gray if flat.
+ */
+function Sparkbar({ values }: { values: number[] }) {
+  if (values.length < 2) {
+    return <span className="text-[10px] text-muted-foreground">—</span>;
+  }
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const first = values[0];
+  const last = values[values.length - 1];
+  const color =
+    last > first
+      ? "bg-emerald-400"
+      : last < first
+        ? "bg-rose-400"
+        : "bg-muted-foreground";
+  return (
+    <span className="inline-flex h-4 items-end gap-px">
+      {values.map((v, i) => {
+        const pct = Math.max(15, ((v - min) / range) * 100);
+        return (
+          <span
+            key={i}
+            className={`w-1 rounded-sm ${color}`}
+            style={{ height: `${pct.toFixed(0)}%` }}
+          />
+        );
+      })}
+    </span>
   );
 }
 

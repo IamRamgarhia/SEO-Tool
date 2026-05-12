@@ -33,6 +33,12 @@ export type DigestRow = {
   openHighIssues: number;
   highlight: string;
   concern: string;
+  /**
+   * Last 8 health-score snapshots (oldest → newest). Powers the inline
+   * sparkbar in the HTML digest and the unicode trend strip in the text
+   * digest. May be shorter than 8 for new clients.
+   */
+  scoreHistory: number[];
 };
 
 export type WeeklyDigest = {
@@ -63,15 +69,21 @@ export async function buildWeeklyDigest(): Promise<WeeklyDigest> {
   let clientsDropped = 0;
 
   for (const c of allClients) {
-    // Latest two snapshots
+    // Latest 8 snapshots — first two power the delta math, the full
+    // window feeds the inline sparkbar in the email digest.
     const snaps = await db
       .select()
       .from(clientMetricSnapshots)
       .where(eq(clientMetricSnapshots.clientId, c.id))
       .orderBy(desc(clientMetricSnapshots.capturedAt))
-      .limit(4);
+      .limit(8);
     const latest = snaps[0];
     const prev = snaps[1];
+    const scoreHistory = snaps
+      .slice()
+      .reverse()
+      .map((s) => s.healthScore)
+      .filter((v): v is number => v !== null);
 
     // Audits run this week
     const recentAudits = await db
@@ -154,6 +166,7 @@ export async function buildWeeklyDigest(): Promise<WeeklyDigest> {
       openHighIssues,
       highlight,
       concern,
+      scoreHistory,
     });
   }
 
@@ -240,11 +253,56 @@ function renderText(o: RenderOpts): string {
     const parts: string[] = [];
     if (r.highlight) parts.push(`✓ ${r.highlight}`);
     if (r.concern) parts.push(`! ${r.concern}`);
+    const trend =
+      r.scoreHistory.length >= 2 ? "  " + unicodeSparkline(r.scoreHistory) : "";
     lines.push(
-      `  ${r.clientName} — ${score}${delta} · ${parts.join(" · ") || "no change"}`,
+      `  ${r.clientName} — ${score}${delta}${trend} · ${parts.join(" · ") || "no change"}`,
     );
   }
   return lines.join("\n");
+}
+
+/**
+ * 8-step block-character sparkline. Renders cleanly in any monospace
+ * email client or terminal. Values are mapped to ▁▂▃▄▅▆▇█.
+ */
+function unicodeSparkline(values: number[]): string {
+  const blocks = "▁▂▃▄▅▆▇█";
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  return values
+    .map((v) => {
+      const idx = Math.min(7, Math.floor(((v - min) / range) * 8));
+      return blocks[idx];
+    })
+    .join("");
+}
+
+/**
+ * Inline HTML sparkbar — chunks of `<span>` elements with widths driven
+ * by score values. Pure CSS, no SVG. Renders in every email client
+ * (Gmail, Outlook, Apple Mail) because it's just inline-block divs with
+ * background-color. Width is fixed at 84px so the table stays scannable.
+ */
+function htmlSparkbar(values: number[]): string {
+  if (values.length < 2) {
+    return `<span style="color:#999;font-size:11px;">—</span>`;
+  }
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const first = values[0];
+  const last = values[values.length - 1];
+  const trendColor =
+    last > first ? "#059669" : last < first ? "#dc2626" : "#6b7280";
+  const bars = values
+    .map((v) => {
+      const pct = Math.max(15, ((v - min) / range) * 100);
+      return `<span style="display:inline-block;width:8px;margin-right:1px;height:${pct.toFixed(0)}%;background:${trendColor};border-radius:1px;vertical-align:bottom;"></span>`;
+    })
+    .join("");
+  return `<span style="display:inline-block;height:18px;line-height:0;white-space:nowrap;vertical-align:middle;">${bars}</span>`;
 }
 
 function renderHtml(o: RenderOpts): string {
@@ -263,6 +321,7 @@ function renderHtml(o: RenderOpts): string {
   th { text-align: left; padding: 8px 10px; background: #f5f5f7; border-bottom: 1px solid #e5e5e7; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: #666; }
   td { padding: 10px; border-bottom: 1px solid #e5e5e7; }
   td.score { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  td.trend { width: 90px; padding: 6px 10px; }
   .up { color: #059669; }
   .down { color: #dc2626; }
   .ok { color: #059669; }
@@ -285,13 +344,14 @@ ${
     : ""
 }
 <table>
-  <thead><tr><th>Client</th><th>Score</th><th>Wins</th><th>Concerns</th></tr></thead>
+  <thead><tr><th>Client</th><th>Score</th><th>Trend</th><th>Wins</th><th>Concerns</th></tr></thead>
   <tbody>
     ${o.rows
       .map(
         (r) => `<tr>
       <td>${esc(r.clientName)}</td>
       <td class="score">${r.scoreLatest ?? "—"}${r.scoreDelta !== null ? `<span class="${r.scoreDelta > 0 ? "up" : r.scoreDelta < 0 ? "down" : ""}"> ${r.scoreDelta > 0 ? "+" : ""}${r.scoreDelta}</span>` : ""}</td>
+      <td class="trend">${htmlSparkbar(r.scoreHistory)}</td>
       <td class="ok">${r.highlight ? "✓ " + esc(r.highlight) : ""}</td>
       <td class="bad">${r.concern ? esc(r.concern) : ""}</td>
     </tr>`,
