@@ -23,6 +23,7 @@ import {
   Lock,
   Map as MapIcon,
   Megaphone,
+  MessageCircle,
   Network,
   Newspaper,
   RefreshCw,
@@ -373,6 +374,14 @@ const tools = [
     description:
       "Render any URL in headless Chrome — post-hydration HTML, full-page screenshot, redirect chain, response headers, console + network errors. Critical for SPAs.",
     accent: "cyan",
+  },
+  {
+    href: "/tools/gbp-reply",
+    icon: MessageCircle,
+    title: "GBP review reply AI ⭐",
+    description:
+      "Pull GBP reviews, AI drafts a reply per review (tone matched to star rating), you approve or edit, post via the GBP API — full loop in one screen.",
+    accent: "emerald",
   },
   {
     href: "/tools/local-cwv",

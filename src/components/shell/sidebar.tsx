@@ -358,22 +358,11 @@ export function Sidebar({
         </div>
       )}
 
-      {/* Search row — shadcn-admin uses a faux-input button with a kbd hint */}
-      {!collapsed ? (
-        <div className="px-3 py-3">
-          <button
-            type="button"
-            onClick={openSearch}
-            className="inline-flex h-9 w-full items-center gap-2 rounded-md border border-input bg-background/40 px-3 text-sm text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
-          >
-            <Search className="size-4 shrink-0" />
-            <span className="flex-1 truncate text-left">Search…</span>
-            <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium sm:inline-flex">
-              ⌘K
-            </kbd>
-          </button>
-        </div>
-      ) : (
+      {/* Top-bar already owns the global search (cmd+K). When the
+          sidebar is collapsed we still expose a tiny search affordance
+          here so users in compact mode can launch the palette without
+          expanding the sidebar first. */}
+      {collapsed && (
         <div className="flex justify-center py-2">
           <button
             type="button"
@@ -398,15 +387,43 @@ export function Sidebar({
           const isOpen =
             group.pinned ||
             (openGroups[group.id] ?? group.defaultOpen ?? false);
+          // Group "contains the current page" — used to give the
+          // collapsed group header a subtle active indicator so the
+          // user can still see which section they're in without
+          // expanding it.
+          const hasActiveChild = group.items.some((it) =>
+            isActive(pathname, it.href),
+          );
           return (
-            <div key={group.id} className="mt-1.5 first:mt-0">
+            <div
+              key={group.id}
+              className={`mt-1.5 first:mt-0 ${
+                isOpen && !collapsed && !group.pinned
+                  ? "rounded-md bg-sidebar-accent/[0.18] pb-1"
+                  : ""
+              }`}
+            >
               {!collapsed && !group.pinned && (
                 <button
                   type="button"
                   onClick={() => toggleGroup(group.id)}
-                  className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm font-semibold text-sidebar-foreground/60 transition-colors hover:text-sidebar-foreground"
+                  className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm font-semibold transition-colors ${
+                    isOpen
+                      ? "text-sidebar-foreground"
+                      : hasActiveChild
+                        ? "text-sidebar-foreground/80 hover:text-sidebar-foreground"
+                        : "text-sidebar-foreground/55 hover:text-sidebar-foreground"
+                  }`}
                 >
-                  <span>{group.title}</span>
+                  <span className="flex items-center gap-1.5">
+                    {/* Tiny dot when a group has the current page but
+                        is collapsed — surfaces "you're in here" without
+                        expanding the group */}
+                    {hasActiveChild && !isOpen && (
+                      <span className="size-1.5 shrink-0 rounded-full bg-primary" />
+                    )}
+                    {group.title}
+                  </span>
                   {isOpen ? (
                     <ChevronDown className="size-3.5 opacity-60" />
                   ) : (
