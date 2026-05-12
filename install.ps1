@@ -253,28 +253,59 @@ Or, if you have winget (Windows 10+):
     }
     Say "Using $pm"
 
+    # Belt-and-suspenders env vars for pnpm 11's build-script policy.
+    # Mirrors the .npmrc settings but in case pnpm reads env vars first.
+    $env:NPM_CONFIG_IGNORED_BUILDS_CHECK = "false"
+    $env:NPM_CONFIG_IGNORED_BUILDS_FAIL_INSTALL = "false"
+    $env:NPM_CONFIG_DANGEROUSLY_ALLOW_ALL_BUILDS = "true"
+    $env:NPM_CONFIG_AUTO_APPROVE_BUILDS = "true"
+
     Say "Installing dependencies (1-3 minutes the first time)"
     & $pm install
-    if ($LASTEXITCODE -ne 0) {
-        # pnpm 11+ fails the install if any package's build script was
-        # skipped. That can happen when a prior failed install left
-        # node_modules in a half-built state (build scripts marked
-        # skipped even though our allowlist now includes them).
-        # Recovery: wipe node_modules and re-install fresh. Idempotent
-        # for data.db / .env.local / .seo-encryption-key (those live
-        # in the install dir, not node_modules).
-        Warn "pnpm install failed - probably skipped-builds from a prior run."
-        Warn "Cleaning node_modules and retrying..."
-        if (Test-Path "node_modules") {
-            Remove-Item -Recurse -Force "node_modules" -ErrorAction SilentlyContinue
-        }
-        & $pm install
-        if ($LASTEXITCODE -ne 0) { Die "Dependency install failed even after a clean retry. See log for details." }
+    $installOk = ($LASTEXITCODE -eq 0)
+
+    if (-not $installOk) {
+        # Strategy 1: try again with --ignore-scripts (bypass pnpm 11's
+        # build-script safety entirely), then rebuild manually below.
+        Warn "pnpm install failed. Retrying with --ignore-scripts..."
+        & $pm install --ignore-scripts
+        $installOk = ($LASTEXITCODE -eq 0)
     }
 
-    # Belt-and-suspenders: explicitly rebuild allowlisted native modules
-    # so their post-install (compile / download binary) DEFINITELY ran.
-    # Non-fatal - if rebuild fails, the modules may still work from cache.
+    if (-not $installOk) {
+        # Strategy 2: nuclear option - wipe node_modules AND pnpm-lock.yaml
+        # so pnpm fully re-resolves from package.json (where our allowlist
+        # in pnpm.onlyBuiltDependencies lives). Preserves data.db /
+        # .env.local / .seo-encryption-key which live in the install dir
+        # root, not in node_modules.
+        Warn "Still failed. Wiping node_modules + pnpm-lock.yaml for a fresh install..."
+        if (Test-Path "node_modules")  { Remove-Item -Recurse -Force "node_modules" -ErrorAction SilentlyContinue }
+        if (Test-Path "pnpm-lock.yaml") { Remove-Item -Force "pnpm-lock.yaml" -ErrorAction SilentlyContinue }
+        & $pm install --ignore-scripts
+        $installOk = ($LASTEXITCODE -eq 0)
+    }
+
+    if (-not $installOk) {
+        # Strategy 3: fall back to npm. Slower and produces a different
+        # lockfile, but doesn't have pnpm's build-script restriction.
+        # This is a true last-resort - shouldn't be reached in practice
+        # after the package.json + .npmrc fixes.
+        if (Get-Command npm -ErrorAction SilentlyContinue) {
+            Warn "pnpm install failed three times. Falling back to npm..."
+            if (Test-Path "node_modules")  { Remove-Item -Recurse -Force "node_modules" -ErrorAction SilentlyContinue }
+            if (Test-Path "pnpm-lock.yaml") { Remove-Item -Force "pnpm-lock.yaml" -ErrorAction SilentlyContinue }
+            & npm install --no-audit --no-fund
+            $installOk = ($LASTEXITCODE -eq 0)
+        }
+    }
+
+    if (-not $installOk) {
+        Die "Dependency install failed after multiple recovery attempts. See log for details."
+    }
+
+    # ALWAYS run rebuild to force native builds for allowlisted packages
+    # (better-sqlite3, sharp, esbuild, tesseract.js, unrs-resolver, msw).
+    # Non-fatal - if rebuild has issues, the modules may still work.
     Say "Rebuilding native modules (better-sqlite3, sharp, esbuild, etc)"
     & $pm rebuild 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) {

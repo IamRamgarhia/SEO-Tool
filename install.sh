@@ -246,22 +246,43 @@ EOM
   fi
   say "Using $PM"
 
+  # Belt-and-suspenders env vars for pnpm 11's build-script policy.
+  export NPM_CONFIG_IGNORED_BUILDS_CHECK=false
+  export NPM_CONFIG_IGNORED_BUILDS_FAIL_INSTALL=false
+  export NPM_CONFIG_DANGEROUSLY_ALLOW_ALL_BUILDS=true
+  export NPM_CONFIG_AUTO_APPROVE_BUILDS=true
+
   say "Installing dependencies (1-3 minutes the first time)"
-  if ! $PM install; then
-    # pnpm 11+ fails the install if any package's build script was
-    # skipped. That can happen when a prior failed install left
-    # node_modules in a half-built state. Recovery: wipe node_modules
-    # (NOT lockfile, NOT data.db) and re-install fresh.
-    warn "pnpm install failed - probably skipped-builds from a prior run."
-    warn "Cleaning node_modules and retrying..."
-    rm -rf node_modules
-    if ! $PM install; then
-      die "Dependency install failed even after a clean retry. See log for details."
-    fi
+  INSTALL_OK=0
+  $PM install && INSTALL_OK=1
+
+  if [ "$INSTALL_OK" != "1" ]; then
+    # Strategy 1: --ignore-scripts bypasses pnpm 11's safety check.
+    warn "pnpm install failed. Retrying with --ignore-scripts..."
+    $PM install --ignore-scripts && INSTALL_OK=1
   fi
 
-  # Belt-and-suspenders: force-rebuild allowlisted native modules so
-  # their post-install steps DEFINITELY ran. Non-fatal.
+  if [ "$INSTALL_OK" != "1" ]; then
+    # Strategy 2: nuclear - wipe node_modules AND pnpm-lock.yaml so
+    # pnpm fully re-resolves from package.json (where our allowlist
+    # lives). Preserves data.db / .env.local / .seo-encryption-key.
+    warn "Still failed. Wiping node_modules + pnpm-lock.yaml for fresh install..."
+    rm -rf node_modules pnpm-lock.yaml
+    $PM install --ignore-scripts && INSTALL_OK=1
+  fi
+
+  if [ "$INSTALL_OK" != "1" ] && command -v npm >/dev/null 2>&1; then
+    # Strategy 3: fall back to npm (no build-script restriction).
+    warn "pnpm install failed three times. Falling back to npm..."
+    rm -rf node_modules pnpm-lock.yaml
+    npm install --no-audit --no-fund && INSTALL_OK=1
+  fi
+
+  if [ "$INSTALL_OK" != "1" ]; then
+    die "Dependency install failed after multiple recovery attempts. See log for details."
+  fi
+
+  # Force-rebuild allowlisted native modules. Non-fatal.
   say "Rebuilding native modules (better-sqlite3, sharp, esbuild, etc)"
   $PM rebuild >/dev/null 2>&1 || warn "pnpm rebuild reported issues - some native modules may need a manual rebuild later."
 
