@@ -600,6 +600,13 @@ export async function generateReportPdf(
     doc.on("end", () => resolve(Buffer.concat(buffers)));
   });
 
+  // Register Inter TTFs if the user dropped them into src/lib/fonts/.
+  // Zero-config: when files are absent (the default), the report uses
+  // PDFKit's built-in Helvetica family and looks identical to before.
+  const { registerInterFonts } = await import("./report-fonts");
+  const hasInter = registerInterFonts(doc);
+  if (hasInter) doc.font("Body");
+
   // ═════════════════════════════════════════════════════════════════
   // Cover page (NEW — Reports v2): full-bleed brand gradient, big-
   // number wow factor, period framing. Page 2 onwards keeps the
@@ -772,7 +779,10 @@ export async function generateReportPdf(
   }
 
   // === Performance highlights === (skip on technical)
+  // Reports v2 — 5-page restructure: this is page 3 (data + wins).
+  // Cover + exec stays clean on its own pages; data pages start fresh.
   if (!isTechnical(template)) {
+    doc.addPage();
     drawSectionHeading(doc, "Performance highlights");
     drawKeyValueRow(doc, "Audits completed this period", String(completedAudits.length));
     drawKeyValueRow(doc, "Tasks completed", `${doneTasks.length} of ${allTasks.length}`);
@@ -1176,6 +1186,10 @@ export async function generateReportPdf(
     }
 
     // === Recommendations / next month ===
+    // Reports v2 — 5-page restructure: this is page 5 (next steps).
+    // Final page is recommendations + tech context so the reader ends
+    // the report looking forward, not back.
+    doc.addPage();
     drawSectionHeading(doc, "Recommendations · next period");
     if (openTasks.length === 0) {
       doc
