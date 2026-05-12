@@ -11,7 +11,9 @@
 [![Self-Hosted](https://img.shields.io/badge/self_hosted-✓-green.svg)](#-install-in-one-command)
 [![Star us](https://img.shields.io/github/stars/IamRamgarhia/SEO-Tool?style=social)](https://github.com/IamRamgarhia/SEO-Tool)
 
-[**⚡ Install**](#-install-in-one-command) · [**💰 How much you save**](#-how-much-you-save) · [**📦 Full feature list**](#-full-feature-list) · [**🔮 Coming soon**](#-coming-soon) · [**🆘 Troubleshooting**](TROUBLESHOOTING.md) · [**❓ FAQ**](#-faq) · [**📜 License**](#-license)
+[**⚡ Install**](#-install-in-one-command) · [**💰 How much you save**](#-how-much-you-save) · [**📸 Screenshots**](#-screenshots) · [**📦 Full feature list**](#-full-feature-list) · [**🔮 Coming soon**](#-coming-soon) · [**🆘 Troubleshooting**](TROUBLESHOOTING.md) · [**❓ FAQ**](#-faq) · [**📜 License**](#-license)
+
+![SEO Tool dashboard — health score, today's priorities, open tasks, latest audit score](docs/screenshots/01-dashboard.png)
 
 </div>
 
@@ -75,6 +77,42 @@ docker compose up -d
 ```
 
 Open <http://localhost:3000>. That's it.
+
+---
+
+## 📸 Screenshots
+
+> Real screens from the running app. No mockups, no marketing renders.
+
+### Client dashboard — health score + today's priorities
+![Client dashboard for Acme Coffee Co. showing a 32/100 health score gauge, open tasks (73), client count, audits (10), and a setup checklist at 60% complete](docs/screenshots/02-client-overview.png)
+
+Every client gets a focused workspace with a 0-100 health score, today's priorities, daily-automation card, and one-click connections to Google Search Console + Analytics 4.
+
+### 150+ tools, organized by SEO discipline
+![All Tools page showing 13 category filters — Audits & scoring, Reports, On-page, Schema, Indexing, Speed, Keywords & content, Backlinks & outreach, Local SEO, Competitors & brand, AI visibility, Imports & integrations — and a grid of tool cards including Full SEO health check, SERP feature tracker, Content attack brief, Meta tag generator, SEO code generator](docs/screenshots/03-all-tools.png)
+
+Filter by category or pin your favorites. Each tool is single-purpose and chainable — output of one feeds the next.
+
+### One AI chat for every SEO question
+![SEO Chat interface with starter prompts including 'Walk me through Google's confirmed ranking factors in 2026', 'How do I get cited in Google AI Overviews', 'My LCP is 4.2s on mobile — what do I fix first?', and 'Should I block GPTBot? Tradeoffs?'](docs/screenshots/04-seo-chat.png)
+
+One chat for every SEO topic — the AI auto-focuses on the right specialty (technical, on-page, AI visibility, schema, local, hreflang, CWV, and 20+ more). Drop in an image for image-SEO analysis.
+
+### AI blog writer with client-aware briefs
+![AI blog writer for Acme Coffee Co. showing topic suggestions like 'Buyer's guide: how to pick the right product for your needs' and 'Common mistakes when buying' alongside a brief form with target keyword 'best espresso machines under 500', supporting keywords, tone, audience, and length controls](docs/screenshots/05-ai-blog-writer.png)
+
+Generates ~1200-word SEO-optimized posts. Topic suggestions are pulled from your client's real Search Console data when connected.
+
+### Ad Funnel Architect — multi-platform paid-ads strategy
+![Ad Funnel Architect with platform checkboxes for Meta, Google Search, Google Display, Google Shopping, LinkedIn, TikTok, and YouTube Ads; configured for an Acme CRM B2B SaaS targeting marketing managers with a $1000/mo lead-gen budget](docs/screenshots/06-ad-funnel-architect.png)
+
+Pick your platforms, set your budget, describe your audience — get a ready-to-paste funnel: awareness → consideration → conversion. Platform-specific ad copy with character limits respected.
+
+### And there's a global overview, too
+![Main agency dashboard with 'Working late, here's what needs attention today' greeting, latest audit score gauge, open tasks counter (73), clients count, audits run (10), and a 5-step setup checklist with progress bar](docs/screenshots/01-dashboard.png)
+
+The home view when you log in. Multi-client overview, today's priorities, and what changed since you were last here.
 
 ---
 
