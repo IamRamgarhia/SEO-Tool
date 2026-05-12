@@ -14,6 +14,12 @@ const nextConfig: NextConfig = {
     "playwright",
     "playwright-core",
     "tesseract.js",
+    // Native binding (.node file) inside js-binding.js — Turbopack 16
+    // can't place it in an ESM chunk. Leaving as external lets Node's
+    // standard require() handle it correctly at runtime.
+    "@resvg/resvg-js",
+    "satori",
+    "qrcode",
   ],
 
   // Hide the dev-mode "Compiling…" bottom-left indicator. For self-hosters

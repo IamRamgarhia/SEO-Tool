@@ -12,7 +12,7 @@
 #
 # Idempotent. Safe to re-run for upgrades.
 
-# IMPORTANT: don't use "Stop" globally — native tools (git, docker, npm) write
+# IMPORTANT: don't use "Stop" globally - native tools (git, docker, npm) write
 # normal status output to stderr and PowerShell strict-mode treats it as an
 # error. Use try/catch where actual errors matter.
 $ErrorActionPreference = "Continue"
@@ -60,7 +60,7 @@ $extracted = Get-ChildItem -Path $tmpExtract -Directory | Select-Object -First 1
 if (-not $extracted) { Die "ZIP didn't contain expected folder." }
 
 if (Test-Path $dir) {
-    Say "Existing install found at $dir — refreshing in place (your data is preserved)"
+    Say "Existing install found at $dir - refreshing in place (your data is preserved)"
     # Copy files over, overwriting but NOT deleting things the ZIP doesn't have
     # (so user data like data.db stays).
     robocopy $extracted.FullName $dir /E /NFL /NDL /NJH /NJS /NC /NS /NP | Out-Null
@@ -85,7 +85,7 @@ function Test-PortInUse($p) {
 
 $port = $defaultPort
 if (Test-PortInUse $port) {
-    Warn "Port $port is occupied — finding a free one"
+    Warn "Port $port is occupied - finding a free one"
     foreach ($try in @(3001, 3002, 3003, 3004, 3005, 3006, 3007, 3008, 3009, 3010, 8080, 8081, 4000, 5000)) {
         if (-not (Test-PortInUse $try)) {
             $port = $try
@@ -106,7 +106,7 @@ if (Get-Command docker -ErrorAction SilentlyContinue) {
 $up = $false
 
 if ($hasDocker) {
-    Say "Docker detected — using Docker install (handles everything: Node, Chromium, deps)"
+    Say "Docker detected - using Docker install (handles everything: Node, Chromium, deps)"
 
     docker compose version 2>$null 1>$null
     if ($LASTEXITCODE -ne 0) {
@@ -166,12 +166,12 @@ Or, if you have winget (Windows 10+):
     }
     Say "Node $(node -v) ok"
 
-    # Pick package manager — enable corepack so pnpm/yarn work without separate install
+    # Pick package manager - enable corepack so pnpm/yarn work without separate install
     $pm = $null
     if (Get-Command pnpm -ErrorAction SilentlyContinue) {
         $pm = "pnpm"
     } else {
-        # Try corepack — ships with Node 16.10+, gives us pnpm without npm install -g
+        # Try corepack - ships with Node 16.10+, gives us pnpm without npm install -g
         if (Get-Command corepack -ErrorAction SilentlyContinue) {
             Say "Enabling pnpm via corepack"
             corepack enable 2>$null 1>$null
@@ -205,12 +205,12 @@ Or, if you have winget (Windows 10+):
         }
     }
 
-    # Build once now so daily startup runs in production mode — ~10x
+    # Build once now so daily startup runs in production mode - ~10x
     # faster page loads and roughly half the RAM of `next dev`.
     Say "Building production bundle (one-time, ~1-2 min). Skips JIT compile every navigation."
     & $pm run build
     if ($LASTEXITCODE -ne 0) {
-        Warn "Production build failed — falling back to dev mode for daily startup."
+        Warn "Production build failed - falling back to dev mode for daily startup."
         Warn "You can retry later with: $pm run build"
         $script:buildOk = $false
     } else {
@@ -283,7 +283,7 @@ $pm run $runScript
             }
         }
         if (-not $shown) {
-            Warn "Log files are empty — the server process didn't even start."
+            Warn "Log files are empty - the server process didn't even start."
             Warn "Run manually to see what's happening:"
             Warn "  cd '$dir'"
             Warn "  $pm run dev"
@@ -354,7 +354,7 @@ $dir\
 @"
 $dir\
   seo.cmd                     <- DOUBLE-CLICK to start/stop the server
-  data.db                     <- your SQLite database (clients, keywords, audits, reports — back this up)
+  data.db                     <- your SQLite database (clients, keywords, audits, reports - back this up)
   .seo-encryption-key         <- AES key that decrypts your API keys (back this up too)
   .env.local                  <- env config (APP_PASSWORD, custom env vars)
   dev-server.log              <- runtime log (tail this for errors)
@@ -382,7 +382,7 @@ You can find this guide on your Desktop any time.
 
 ----------------------- FIRST 5 MIN ------------------
 1. Open http://localhost:$port
-2. Add a client at /clients/new (paste any domain — it'll
+2. Add a client at /clients/new (paste any domain - it'll
    auto-detect the tech stack and niche)
 3. Pick an AI provider at /settings:
      - Local Ollama (free, private, fully offline)  OR
@@ -400,7 +400,7 @@ $folderLayout
 $controls
 
 ----------------------- TROUBLESHOOT -----------------
-Blank page?       Server still building — wait 30-60s and refresh.
+Blank page?       Server still building - wait 30-60s and refresh.
 Port conflict?    The installer auto-tries 3001-3010, 8080-81, 4000, 5000.
                   If it picked a different port than 3000, this guide shows it
                   at the top. To force a port: `$env:SEO_PORT='4000' before
@@ -422,7 +422,7 @@ The app auto-opens in your browser. If the port is already serving
 
 Your data NEVER leaves this machine. No telemetry. No phone-home.
 The only outbound network calls are:
-   - Google's free APIs (GSC, GA4, PageSpeed) — only when you connect them
+   - Google's free APIs (GSC, GA4, PageSpeed) - only when you connect them
    - Your chosen AI provider (only when you run AI features)
    - SERP scraping via headless browser (only when you check rankings)
 
