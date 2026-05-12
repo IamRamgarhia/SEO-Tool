@@ -700,30 +700,106 @@ export default async function ClientDetailPage({
         );
       })()}
 
-      {/* STATS — same StatCard component as dashboard for consistency */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard
-          label="Open issues"
-          value={latestCompleted?.issuesCount ?? 0}
-          accent="amber"
-          icon={AlertCircle}
-          hint="From last audit"
-        />
-        <StatCard
-          label="Open tasks"
-          value={openTaskCount}
-          accent="violet"
-          icon={ClipboardList}
-          hint="Auto-generated + manual"
-        />
-        <StatCard
-          label="Tracked keywords"
-          value={keywordCount}
-          accent="cyan"
-          icon={Search}
-          hint={keywordCount === 0 ? "Not tracking any yet" : "In rotation"}
-        />
-      </div>
+      {/* STATS — or inviting empty-state when this client has no data yet */}
+      {latestCompleted || keywordCount > 0 || openTaskCount > 0 ? (
+        <div className="grid gap-4 sm:grid-cols-3">
+          <StatCard
+            label="Open issues"
+            value={latestCompleted?.issuesCount ?? 0}
+            accent="amber"
+            icon={AlertCircle}
+            hint="From last audit"
+          />
+          <StatCard
+            label="Open tasks"
+            value={openTaskCount}
+            accent="violet"
+            icon={ClipboardList}
+            hint="Auto-generated + manual"
+          />
+          <StatCard
+            label="Tracked keywords"
+            value={keywordCount}
+            accent="cyan"
+            icon={Search}
+            hint={keywordCount === 0 ? "Not tracking any yet" : "In rotation"}
+          />
+        </div>
+      ) : (
+        <section className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-cyan-500/[0.04] via-violet-500/[0.03] to-transparent p-6">
+          <div className="pointer-events-none absolute -right-10 -top-10 size-40 rounded-full bg-cyan-500/10 blur-3xl" />
+          <header className="relative">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-300">
+              Get started
+            </p>
+            <h2 className="mt-2 text-xl font-semibold">
+              No data for {client.name} yet — let&apos;s seed it.
+            </h2>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              Pick any of the three to bootstrap this client. You can do them
+              in any order, and the AI agent will start filling in the rest
+              within 24h.
+            </p>
+          </header>
+          <div className="relative mt-5 grid gap-3 sm:grid-cols-3">
+            <form action={runAction} className="contents">
+              <button
+                type="submit"
+                className="group flex flex-col items-start gap-2 rounded-xl border border-cyan-500/30 bg-cyan-500/[0.06] p-4 text-left transition-colors hover:bg-cyan-500/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                <span className="grid size-8 place-items-center rounded-lg bg-cyan-500/15 text-cyan-300 ring-1 ring-inset ring-cyan-500/30">
+                  <Play className="size-4" />
+                </span>
+                <div>
+                  <div className="text-sm font-semibold">Run an audit</div>
+                  <div className="mt-0.5 text-[11px] text-muted-foreground">
+                    30+ SEO checks. ~60 seconds. Sets the baseline health
+                    score.
+                  </div>
+                </div>
+                <span className="mt-1 text-[11px] font-medium text-cyan-300 transition-transform group-hover:translate-x-0.5">
+                  Run now →
+                </span>
+              </button>
+            </form>
+            <Link
+              href={`/keywords?clientId=${client.id}`}
+              className="group flex flex-col items-start gap-2 rounded-xl border border-violet-500/30 bg-violet-500/[0.04] p-4 transition-colors hover:bg-violet-500/[0.10]"
+            >
+              <span className="grid size-8 place-items-center rounded-lg bg-violet-500/15 text-violet-300 ring-1 ring-inset ring-violet-500/30">
+                <Search className="size-4" />
+              </span>
+              <div>
+                <div className="text-sm font-semibold">Track keywords</div>
+                <div className="mt-0.5 text-[11px] text-muted-foreground">
+                  10-15 keywords gives the AI enough signal to spot quick
+                  wins.
+                </div>
+              </div>
+              <span className="mt-1 text-[11px] font-medium text-violet-300 transition-transform group-hover:translate-x-0.5">
+                Add keywords →
+              </span>
+            </Link>
+            <Link
+              href={`/clients/${client.id}/onboarding`}
+              className="group flex flex-col items-start gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.04] p-4 transition-colors hover:bg-emerald-500/[0.10]"
+            >
+              <span className="grid size-8 place-items-center rounded-lg bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30">
+                <Sparkles className="size-4" />
+              </span>
+              <div>
+                <div className="text-sm font-semibold">Smart onboarding</div>
+                <div className="mt-0.5 text-[11px] text-muted-foreground">
+                  AI inspects the site and auto-generates a 30-day SEO plan.
+                </div>
+              </div>
+              <span className="mt-1 text-[11px] font-medium text-emerald-300 transition-transform group-hover:translate-x-0.5">
+                Auto-plan →
+              </span>
+            </Link>
+          </div>
+        </section>
+      )}
 
       {/* DAILY AUTOMATION ENTRY — schedules + queue, per client */}
       <DailyAutomationCard clientId={client.id} />

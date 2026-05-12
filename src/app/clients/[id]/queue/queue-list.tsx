@@ -105,12 +105,36 @@ export function QueueList({
 
   if (items.length === 0) {
     return (
-      <div className="glass-apple rounded-2xl p-10 text-center">
-        <Inbox className="mx-auto size-8 text-muted-foreground/40" />
-        <p className="mt-3 text-sm text-muted-foreground">
-          The queue is empty. Add a schedule on the automations page and the
-          AI will generate items here every morning.
-        </p>
+      <div className="glass-apple rounded-2xl px-6 py-12">
+        <div className="mx-auto flex max-w-md flex-col items-center text-center">
+          <span className="grid size-12 place-items-center rounded-2xl bg-violet-500/15 ring-1 ring-inset ring-violet-500/30">
+            <Inbox className="size-5 text-violet-300" />
+          </span>
+          <h3 className="mt-4 text-base font-semibold">Nothing waiting yet</h3>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            The queue collects AI-generated items from your daily schedules
+            (blog drafts, GBP posts, social copy, daily checklists). Schedules
+            run once a day at the time you set — items land here in{" "}
+            <span className="font-medium text-foreground/80">
+              Pending review
+            </span>{" "}
+            for you to approve, edit, or reject.
+          </p>
+          <p className="mt-4 grid w-full max-w-xs grid-cols-2 gap-1.5 text-[11px] text-muted-foreground">
+            <span className="rounded-md bg-amber-500/10 px-2 py-1.5 text-amber-300 ring-1 ring-inset ring-amber-500/30">
+              <span className="font-semibold">Pending</span> · waits for you
+            </span>
+            <span className="rounded-md bg-emerald-500/10 px-2 py-1.5 text-emerald-300 ring-1 ring-inset ring-emerald-500/30">
+              <span className="font-semibold">Auto-publish</span> · skips review
+            </span>
+          </p>
+          <a
+            href={`/clients/${clientId}/automations`}
+            className="mt-5 inline-flex h-9 items-center rounded-md bg-violet-500/15 px-4 text-sm font-medium text-violet-300 ring-1 ring-inset ring-violet-500/30 transition-colors hover:bg-violet-500/25"
+          >
+            Set up a schedule →
+          </a>
+        </div>
       </div>
     );
   }

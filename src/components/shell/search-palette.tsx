@@ -164,13 +164,17 @@ export function SearchPalette() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="group flex h-9 max-w-md flex-1 items-center gap-2 rounded-lg border border-white/10 bg-card/60 px-3 text-sm text-muted-foreground transition-colors hover:border-white/20 hover:bg-white/5"
+        className="group flex h-9 max-w-md flex-1 items-center gap-2 rounded-lg border border-white/10 bg-card/60 px-3 text-sm text-muted-foreground transition-colors hover:border-cyan-500/30 hover:bg-cyan-500/[0.04]"
+        title="Quick search — Cmd / Ctrl + K"
       >
-        <Search className="size-4" />
-        <span className="flex-1 text-left">
+        <Search className="size-4 transition-colors group-hover:text-cyan-300" />
+        <span className="flex-1 text-left transition-colors group-hover:text-foreground">
           Search clients, keywords, tasks…
         </span>
-        <kbd className="hidden items-center gap-0.5 rounded-md border border-white/10 bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground sm:flex">
+        {/* Visually prominent so users notice the shortcut. The cyan
+            ring + foreground text contrast makes it scan as an
+            actionable hint, not chrome. */}
+        <kbd className="hidden items-center gap-0.5 rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-semibold text-foreground/90 ring-1 ring-inset ring-white/15 transition-colors group-hover:bg-cyan-500/15 group-hover:text-cyan-200 group-hover:ring-cyan-500/30 sm:flex">
           <CommandIcon className="size-3" />
           K
         </kbd>
