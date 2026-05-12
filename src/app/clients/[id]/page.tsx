@@ -12,6 +12,7 @@ import {
   FileDown,
   Layers,
   Link2,
+  MoreHorizontal,
   Pencil,
   Play,
   RefreshCw,
@@ -25,7 +26,6 @@ import { db } from "@/db/client";
 import { audits, clients, keywords, tasks } from "@/db/schema";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { ScoreGauge } from "@/components/ui/score-gauge";
 import { SiteFavicon } from "@/components/ui/site-favicon";
 import { StatCard } from "@/components/ui/stat-card";
 import { BrandingPreflightBanner } from "./branding-preflight-banner";
@@ -80,6 +80,26 @@ const nicheTone: Record<string, string> = {
   blog: "bg-emerald-500/15 text-emerald-300 ring-emerald-500/20",
   services: "bg-rose-500/15 text-rose-300 ring-rose-500/20",
 };
+
+/**
+ * Compact relative-time formatter for the client hero — "2 hours ago",
+ * "5 days ago", "3 months ago". Defaults to "today" for anything under
+ * an hour so the copy reads naturally even right after a fresh audit.
+ */
+function relativeTime(date: Date): string {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (seconds < 60 * 60) return "today";
+  const hours = Math.floor(seconds / 3600);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 14) return `${days} day${days === 1 ? "" : "s"} ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 9) return `${weeks} week${weeks === 1 ? "" : "s"} ago`;
+  const months = Math.floor(days / 30);
+  if (months < 18) return `${months} month${months === 1 ? "" : "s"} ago`;
+  const years = Math.floor(days / 365);
+  return `${years} year${years === 1 ? "" : "s"} ago`;
+}
 
 function PanelSkeleton({ title }: { title: string }) {
   return (
@@ -279,230 +299,367 @@ export default async function ClientDetailPage({
         />
 
         <div className="min-w-0 flex-1 space-y-6">
-      {/* HERO — shadcn-admin style: flat card, real favicon, no orbs */}
-      <section className="rounded-xl border border-border bg-card p-6 shadow">
-        <nav className="flex items-center gap-1 text-xs text-muted-foreground">
-          <Link
-            href="/clients"
-            className="rounded px-1 py-0.5 transition-colors hover:text-foreground"
-          >
-            Clients
-          </Link>
-          <span className="text-muted-foreground/60">/</span>
-          <span className="text-foreground">{client.name}</span>
-        </nav>
+      {/*
+        HERO — editorial composition.
+        Top accent rule colored by score band gives the card a magazine-masthead
+        feel. Left column owns identity; right column makes the score the
+        unambiguous focal point with a tabular display number + horizontal
+        strength bar.
+        Action row collapses 10 buttons into a hero CTA + 4 primaries + a
+        "More" overflow so the visual weight reads as decisive, not busy.
+      */}
+      {(() => {
+        const score = latestCompleted?.score ?? null;
+        const tone: "muted" | "emerald" | "amber" | "rose" =
+          score === null
+            ? "muted"
+            : score >= 75
+              ? "emerald"
+              : score >= 50
+                ? "amber"
+                : "rose";
+        const toneClasses = {
+          muted: {
+            number: "text-muted-foreground",
+            bar: "bg-muted-foreground/30",
+            stripe: "from-transparent via-border to-transparent",
+            ringFavicon: "ring-border",
+            chipLabel: "text-muted-foreground",
+            chipBg: "bg-muted/40 ring-border",
+          },
+          emerald: {
+            number: "text-emerald-300",
+            bar: "bg-emerald-400",
+            stripe: "from-emerald-500/0 via-emerald-400/70 to-emerald-500/0",
+            ringFavicon: "ring-emerald-500/40",
+            chipLabel: "text-emerald-300",
+            chipBg: "bg-emerald-500/10 ring-emerald-500/30",
+          },
+          amber: {
+            number: "text-amber-300",
+            bar: "bg-amber-400",
+            stripe: "from-amber-500/0 via-amber-400/70 to-amber-500/0",
+            ringFavicon: "ring-amber-500/40",
+            chipLabel: "text-amber-300",
+            chipBg: "bg-amber-500/10 ring-amber-500/30",
+          },
+          rose: {
+            number: "text-rose-300",
+            bar: "bg-rose-400",
+            stripe: "from-rose-500/0 via-rose-400/70 to-rose-500/0",
+            ringFavicon: "ring-rose-500/40",
+            chipLabel: "text-rose-300",
+            chipBg: "bg-rose-500/10 ring-rose-500/30",
+          },
+        }[tone];
+        const auditedLabel = latestCompleted?.completedAt
+          ? relativeTime(latestCompleted.completedAt)
+          : null;
+        const auditedDateFull = latestCompleted?.completedAt
+          ? latestCompleted.completedAt.toLocaleDateString(undefined, {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })
+          : null;
+        const barFill = score === null ? 0 : Math.max(2, Math.min(100, score));
 
-        <div className="mt-4 grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <SiteFavicon url={client.url} name={client.name} size={48} />
-              <div className="space-y-1">
-                <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-                  {client.name}
-                </h1>
-                <a
-                  href={client.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground hover:underline"
+        return (
+          <section className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-xl">
+            {/* Score-colored masthead stripe */}
+            <div
+              aria-hidden
+              className={`h-px w-full bg-gradient-to-r ${toneClasses.stripe}`}
+            />
+
+            <div className="p-6 sm:p-8">
+              {/* Breadcrumb — editorial micro caps */}
+              <nav className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                <Link
+                  href="/clients"
+                  className="transition-colors hover:text-foreground"
                 >
-                  {client.url.replace(/^https?:\/\//, "")}
-                  <ExternalLink className="size-3" />
-                </a>
+                  Clients
+                </Link>
+                <span aria-hidden className="text-muted-foreground/40">·</span>
+                <span className="truncate text-foreground/80">{client.name}</span>
+              </nav>
+
+              {/* Headline grid */}
+              <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+                {/* LEFT — identity */}
+                <div className="min-w-0 space-y-5">
+                  <div className="flex items-start gap-4">
+                    <span
+                      className={`shrink-0 rounded-2xl ring-2 ring-offset-2 ring-offset-card transition-colors ${toneClasses.ringFavicon}`}
+                    >
+                      <SiteFavicon
+                        url={client.url}
+                        name={client.name}
+                        size={56}
+                      />
+                    </span>
+                    <div className="min-w-0 space-y-2">
+                      <h1 className="break-words text-[2.25rem] font-bold leading-[1.02] tracking-tight text-foreground sm:text-[2.75rem] lg:text-5xl">
+                        {client.name}
+                      </h1>
+                      <a
+                        href={client.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="group inline-flex max-w-full items-center gap-1.5 rounded-md bg-muted/40 px-2 py-1 font-mono text-[12px] text-muted-foreground ring-1 ring-inset ring-border transition-colors hover:bg-muted/60 hover:text-foreground"
+                      >
+                        <span className="truncate">
+                          {client.url.replace(/^https?:\/\//, "")}
+                        </span>
+                        <ExternalLink className="size-3 shrink-0 opacity-60 group-hover:opacity-100" />
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Metadata strip */}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
+                    {client.niche && (
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium ring-1 ring-inset ${nicheTone[client.niche] ?? "bg-muted text-muted-foreground"}`}
+                      >
+                        <Sparkles className="size-3" />
+                        {nicheLabels[client.niche] ?? client.niche}
+                      </span>
+                    )}
+                    {client.techStack && client.techStack.length > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-muted/60 px-2.5 py-0.5 text-[11px] text-muted-foreground ring-1 ring-inset ring-border">
+                        <Layers className="size-3" />
+                        {client.techStack.length} tech
+                        {client.techStack.length === 1 ? "" : "s"} detected
+                      </span>
+                    )}
+                    {auditedLabel && (
+                      <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                        <span className="size-1 rounded-full bg-muted-foreground/50" />
+                        <span title={auditedDateFull ?? undefined}>
+                          Audited {auditedLabel}
+                        </span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* RIGHT — score panel */}
+                <div className="relative lg:border-l lg:border-border lg:pl-8">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                    Health score
+                  </div>
+                  <div className="mt-2 flex items-baseline gap-2">
+                    <div
+                      className={`font-bold tabular-nums leading-none ${toneClasses.number}`}
+                      style={{ fontSize: "clamp(4rem, 6vw, 5.5rem)" }}
+                    >
+                      {score === null ? "—" : score}
+                    </div>
+                    <div className="text-xl font-medium text-muted-foreground/60">
+                      /100
+                    </div>
+                  </div>
+                  {/* Strength bar */}
+                  <div
+                    className="mt-4 h-1 w-full overflow-hidden rounded-full bg-muted/40"
+                    role="img"
+                    aria-label={`Health score ${score ?? "unscored"} out of 100`}
+                  >
+                    <div
+                      className={`h-full rounded-full transition-[width] duration-700 ${toneClasses.bar}`}
+                      style={{ width: `${barFill}%` }}
+                    />
+                  </div>
+                  {/* Sub-metadata */}
+                  <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+                    {latestCompleted ? (
+                      <>
+                        <span className="font-medium text-foreground/80 tabular-nums">
+                          {latestCompleted.issuesCount}
+                        </span>
+                        <span>issues found</span>
+                        <span aria-hidden className="text-muted-foreground/40">
+                          ·
+                        </span>
+                        <span>{auditedDateFull}</span>
+                      </>
+                    ) : (
+                      <span>
+                        Run an audit to score this site — takes ~30 seconds.
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Hairline + action row */}
+              <div className="mt-7 border-t border-border pt-5">
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* HERO action — Run audit */}
+                  <form action={runAction}>
+                    <SubmitButton
+                      icon={<Play className="size-3.5" />}
+                      pendingChildren="Running audit…"
+                      pendingToast="Starting audit"
+                      pendingToastDescription="Crawling the site and running 30+ checks. Takes ~30-60 s."
+                    >
+                      Run audit
+                    </SubmitButton>
+                  </form>
+
+                  {/* Generate report dropdown */}
+                  <details className="group/rep relative">
+                    <summary
+                      className={buttonVariants({
+                        variant: "outline",
+                        className:
+                          "list-none cursor-pointer [&::-webkit-details-marker]:hidden",
+                      })}
+                    >
+                      <FileDown className="size-3.5" />
+                      Generate report
+                    </summary>
+                    <div className="absolute left-0 top-full z-20 mt-1 w-60 overflow-hidden rounded-lg border border-border bg-popover shadow-xl">
+                      <Link
+                        href={`/reports/${client.id}?template=executive`}
+                        className="block px-3 py-2 text-sm hover:bg-accent"
+                      >
+                        <div className="font-medium">Executive</div>
+                        <div className="text-[11px] text-muted-foreground">
+                          Score, summary, top issues — 1 page
+                        </div>
+                      </Link>
+                      <Link
+                        href={`/reports/${client.id}?template=detailed`}
+                        className="block border-t border-border px-3 py-2 text-sm hover:bg-accent"
+                      >
+                        <div className="font-medium">Detailed</div>
+                        <div className="text-[11px] text-muted-foreground">
+                          Full report — work done + next steps
+                        </div>
+                      </Link>
+                      <Link
+                        href={`/reports/${client.id}?template=technical`}
+                        className="block border-t border-border px-3 py-2 text-sm hover:bg-accent"
+                      >
+                        <div className="font-medium">Technical</div>
+                        <div className="text-[11px] text-muted-foreground">
+                          Every issue + URLs — engineering
+                        </div>
+                      </Link>
+                    </div>
+                  </details>
+
+                  {/* Primary AI surface */}
+                  <Link
+                    href={`/clients/${client.id}/ai-audit`}
+                    className={buttonVariants({
+                      variant: "outline",
+                      className: "border-violet-500/30 bg-violet-500/10",
+                    })}
+                  >
+                    <Bot className="size-3.5" />
+                    AI audit
+                  </Link>
+
+                  {/* Onboarding — emphasised when not completed */}
+                  <Link
+                    href={`/clients/${client.id}/onboarding`}
+                    className={buttonVariants({
+                      variant: "outline",
+                      className:
+                        client.onboardingStep === "completed"
+                          ? ""
+                          : "border-violet-500/40 bg-violet-500/10 text-violet-200",
+                    })}
+                    title={
+                      client.onboardingStep === "completed"
+                        ? "Re-run onboarding to refresh keywords + plan"
+                        : "Smart onboarding — auto-generates a 30-day plan"
+                    }
+                  >
+                    <Sparkles className="size-3.5" />
+                    {client.onboardingStep === "completed"
+                      ? "Re-plan"
+                      : "Smart onboarding"}
+                  </Link>
+
+                  {/* Overflow — everything else */}
+                  <details className="group/more relative ml-auto">
+                    <summary
+                      className={buttonVariants({
+                        variant: "outline",
+                        className:
+                          "list-none cursor-pointer [&::-webkit-details-marker]:hidden",
+                      })}
+                    >
+                      <MoreHorizontal className="size-3.5" />
+                      More
+                    </summary>
+                    <div className="absolute right-0 top-full z-20 mt-1 w-56 overflow-hidden rounded-lg border border-border bg-popover shadow-xl">
+                      <Link
+                        href={`/agent/c/${client.id}`}
+                        className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent"
+                      >
+                        <Bot className="size-3.5 text-violet-300" />
+                        AI agent
+                      </Link>
+                      <Link
+                        href={`/blog/${client.id}`}
+                        className="flex items-center gap-2 border-t border-border px-3 py-2 text-sm hover:bg-accent"
+                      >
+                        <Wand2 className="size-3.5 text-violet-300" />
+                        AI blog
+                      </Link>
+                      <Link
+                        href={`/guest-posts/c/${client.id}`}
+                        className="flex items-center gap-2 border-t border-border px-3 py-2 text-sm hover:bg-accent"
+                      >
+                        <Wand2 className="size-3.5 text-amber-300" />
+                        Guest posts
+                      </Link>
+                      <Link
+                        href={`/link-building/c/${client.id}`}
+                        className="flex items-center gap-2 border-t border-border px-3 py-2 text-sm hover:bg-accent"
+                      >
+                        <Link2 className="size-3.5 text-emerald-300" />
+                        Backlinks
+                      </Link>
+                      <Link
+                        href={`/clients/${client.id}/edit`}
+                        className="flex items-center gap-2 border-t border-border px-3 py-2 text-sm hover:bg-accent"
+                      >
+                        <Pencil className="size-3.5 text-muted-foreground" />
+                        Edit client
+                      </Link>
+                      <form
+                        action={refreshMetadataAction}
+                        className="border-t border-border"
+                      >
+                        <SubmitButton
+                          variant="ghost"
+                          icon={
+                            <RefreshCw className="size-3.5 text-muted-foreground" />
+                          }
+                          pendingChildren="Refreshing…"
+                          pendingToast="Refreshing site metadata"
+                          pendingToastDescription="Re-fetching logo, NAP, tech stack…"
+                          title="Re-fetch logo, address, social links, and tech stack from the live site"
+                          className="w-full justify-start rounded-none px-3 py-2 text-sm font-normal hover:bg-accent"
+                        >
+                          Refresh metadata
+                        </SubmitButton>
+                      </form>
+                    </div>
+                  </details>
+                </div>
               </div>
             </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              {client.niche && (
-                <span
-                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${nicheTone[client.niche] ?? "bg-muted text-muted-foreground"}`}
-                >
-                  <Sparkles className="size-3" />
-                  {nicheLabels[client.niche] ?? client.niche}
-                </span>
-              )}
-              {client.techStack && client.techStack.length > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">
-                  <Layers className="size-3" />
-                  {client.techStack.length} techs detected
-                </span>
-              )}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 pt-2">
-              <form action={runAction}>
-                <SubmitButton
-                  icon={<Play className="size-3.5" />}
-                  pendingChildren="Running audit…"
-                  pendingToast="Starting audit"
-                  pendingToastDescription="Crawling the site and running 30+ checks. Takes ~30-60 s."
-                >
-                  Run audit
-                </SubmitButton>
-              </form>
-              <details className="group/rep relative">
-                <summary
-                  className={buttonVariants({
-                    variant: "outline",
-                    className:
-                      "list-none cursor-pointer [&::-webkit-details-marker]:hidden",
-                  })}
-                >
-                  <FileDown className="size-3.5" />
-                  Generate report
-                </summary>
-                <div className="absolute right-0 top-full z-20 mt-1 w-60 overflow-hidden rounded-lg border border-border bg-popover shadow-xl">
-                  <Link
-                    href={`/reports/${client.id}?template=executive`}
-                    className="block px-3 py-2 text-sm hover:bg-accent"
-                  >
-                    <div className="font-medium">Executive</div>
-                    <div className="text-[11px] text-muted-foreground">
-                      Score, summary, top issues — 1 page
-                    </div>
-                  </Link>
-                  <Link
-                    href={`/reports/${client.id}?template=detailed`}
-                    className="block border-t border-border px-3 py-2 text-sm hover:bg-accent"
-                  >
-                    <div className="font-medium">Detailed</div>
-                    <div className="text-[11px] text-muted-foreground">
-                      Full report — work done + next steps
-                    </div>
-                  </Link>
-                  <Link
-                    href={`/reports/${client.id}?template=technical`}
-                    className="block border-t border-border px-3 py-2 text-sm hover:bg-accent"
-                  >
-                    <div className="font-medium">Technical</div>
-                    <div className="text-[11px] text-muted-foreground">
-                      Every issue + URLs — engineering
-                    </div>
-                  </Link>
-                </div>
-              </details>
-              <Link
-                href={`/clients/${client.id}/ai-audit`}
-                className={buttonVariants({
-                  variant: "outline",
-                  className: "border-violet-500/30 bg-violet-500/10",
-                })}
-              >
-                <Bot className="size-3.5" />
-                AI audit
-              </Link>
-              <Link
-                href={`/agent/c/${client.id}`}
-                className={buttonVariants({
-                  variant: "outline",
-                  className: "border-violet-500/30 bg-violet-500/10",
-                })}
-              >
-                <Bot className="size-3.5" />
-                AI agent
-              </Link>
-              <Link
-                href={`/blog/${client.id}`}
-                className={buttonVariants({
-                  variant: "outline",
-                  className: "border-violet-500/30 bg-violet-500/10",
-                })}
-              >
-                <Wand2 className="size-3.5" />
-                AI blog
-              </Link>
-              <Link
-                href={`/link-building/c/${client.id}`}
-                className={buttonVariants({
-                  variant: "outline",
-                  className: "border-emerald-500/30 bg-emerald-500/10",
-                })}
-                title="AI-matched backlink prospects + tracker for this client"
-              >
-                <Link2 className="size-3.5" />
-                Backlinks
-              </Link>
-              <Link
-                href={`/guest-posts/c/${client.id}`}
-                className={buttonVariants({
-                  variant: "outline",
-                  className: "border-amber-500/30 bg-amber-500/10",
-                })}
-                title="AI guest post composer tuned per platform"
-              >
-                <Wand2 className="size-3.5" />
-                Guest posts
-              </Link>
-              <Link
-                href={`/clients/${client.id}/onboarding`}
-                className={buttonVariants({
-                  variant: "outline",
-                  className:
-                    client.onboardingStep === "completed"
-                      ? ""
-                      : "border-violet-500/40 bg-violet-500/10 text-violet-200",
-                })}
-                title={
-                  client.onboardingStep === "completed"
-                    ? "Re-run onboarding to refresh keywords + plan"
-                    : "Smart onboarding — auto-generates a 30-day plan"
-                }
-              >
-                <Sparkles className="size-3.5" />
-                {client.onboardingStep === "completed"
-                  ? "Re-plan"
-                  : "Smart onboarding"}
-              </Link>
-              <Link
-                href={`/clients/${client.id}/edit`}
-                className={buttonVariants({
-                  variant: "outline",
-                  className: "border-white/10 bg-white/5",
-                })}
-              >
-                <Pencil className="size-3.5" />
-                Edit
-              </Link>
-              <form action={refreshMetadataAction}>
-                <SubmitButton
-                  variant="outline"
-                  icon={<RefreshCw className="size-3.5" />}
-                  pendingChildren="Refreshing…"
-                  pendingToast="Refreshing site metadata"
-                  pendingToastDescription="Re-fetching logo, NAP, tech stack…"
-                  title="Re-fetch logo, address, social links, and tech stack from the live site"
-                >
-                  Refresh
-                </SubmitButton>
-              </form>
-            </div>
-          </div>
-
-          {/* Score gauge in hero */}
-          <div className="flex items-center gap-4 rounded-lg border border-border bg-muted/30 p-4">
-            <ScoreGauge score={latestCompleted?.score ?? null} size={120} />
-            <div className="space-y-1">
-              <div className="text-xs font-medium text-muted-foreground">
-                Latest audit
-              </div>
-              {latestCompleted ? (
-                <>
-                  <div className="text-sm font-medium text-foreground">
-                    {latestCompleted.completedAt?.toLocaleDateString() ?? "—"}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {latestCompleted.issuesCount} issues found
-                  </div>
-                </>
-              ) : (
-                <div className="text-xs text-muted-foreground">
-                  Click Run audit to score this site
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
+          </section>
+        );
+      })()}
 
       {/* STATS — same StatCard component as dashboard for consistency */}
       <div className="grid gap-4 sm:grid-cols-3">
