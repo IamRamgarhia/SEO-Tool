@@ -65,6 +65,121 @@ type NavGroup = {
 };
 
 /**
+ * Per-group accent. Pre-baked Tailwind class strings so the JIT picks
+ * them up — dynamic `text-${color}-300` would silently break.
+ *
+ * `icon` is the text color applied to each item's lucide icon.
+ * `iconActive` is the brighter shade used on the currently-active row.
+ * `dot` is the small marker shown beside a collapsed-group header when
+ * that group contains the active page.
+ * `borderLeft` is the 2px left-edge accent shown on the open-group
+ * container so the cluster reads as "you are inside this section".
+ */
+type GroupAccent = {
+  icon: string;
+  iconActive: string;
+  dot: string;
+  borderLeft: string;
+  openBg: string;
+};
+
+const NEUTRAL_ACCENT: GroupAccent = {
+  icon: "text-sidebar-foreground/55",
+  iconActive: "text-sidebar-accent-foreground",
+  dot: "bg-primary",
+  borderLeft: "border-l-2 border-l-primary/40",
+  openBg: "bg-sidebar-accent/30",
+};
+
+const GROUP_ACCENTS: Record<string, GroupAccent> = {
+  essentials: {
+    icon: "text-violet-300/70",
+    iconActive: "text-violet-200",
+    dot: "bg-violet-400",
+    borderLeft: "border-l-2 border-l-violet-500/40",
+    openBg: "bg-violet-500/[0.08]",
+  },
+  everyday: {
+    icon: "text-cyan-300/70",
+    iconActive: "text-cyan-200",
+    dot: "bg-cyan-400",
+    borderLeft: "border-l-2 border-l-cyan-500/40",
+    openBg: "bg-cyan-500/[0.08]",
+  },
+  content: {
+    icon: "text-violet-300/70",
+    iconActive: "text-violet-200",
+    dot: "bg-violet-400",
+    borderLeft: "border-l-2 border-l-violet-500/40",
+    openBg: "bg-violet-500/[0.06]",
+  },
+  keywords: {
+    icon: "text-cyan-300/70",
+    iconActive: "text-cyan-200",
+    dot: "bg-cyan-400",
+    borderLeft: "border-l-2 border-l-cyan-500/40",
+    openBg: "bg-cyan-500/[0.06]",
+  },
+  "paid-ads": {
+    icon: "text-rose-300/70",
+    iconActive: "text-rose-200",
+    dot: "bg-rose-400",
+    borderLeft: "border-l-2 border-l-rose-500/40",
+    openBg: "bg-rose-500/[0.06]",
+  },
+  backlinks: {
+    icon: "text-emerald-300/70",
+    iconActive: "text-emerald-200",
+    dot: "bg-emerald-400",
+    borderLeft: "border-l-2 border-l-emerald-500/40",
+    openBg: "bg-emerald-500/[0.06]",
+  },
+  local: {
+    icon: "text-amber-300/70",
+    iconActive: "text-amber-200",
+    dot: "bg-amber-400",
+    borderLeft: "border-l-2 border-l-amber-500/40",
+    openBg: "bg-amber-500/[0.06]",
+  },
+  competitors: {
+    icon: "text-cyan-300/70",
+    iconActive: "text-cyan-200",
+    dot: "bg-cyan-400",
+    borderLeft: "border-l-2 border-l-cyan-500/40",
+    openBg: "bg-cyan-500/[0.06]",
+  },
+  "ai-visibility": {
+    icon: "text-fuchsia-300/70",
+    iconActive: "text-fuchsia-200",
+    dot: "bg-fuchsia-400",
+    borderLeft: "border-l-2 border-l-fuchsia-500/40",
+    openBg: "bg-fuchsia-500/[0.06]",
+  },
+  monitoring: {
+    icon: "text-amber-300/70",
+    iconActive: "text-amber-200",
+    dot: "bg-amber-400",
+    borderLeft: "border-l-2 border-l-amber-500/40",
+    openBg: "bg-amber-500/[0.06]",
+  },
+  imports: {
+    icon: "text-emerald-300/70",
+    iconActive: "text-emerald-200",
+    dot: "bg-emerald-400",
+    borderLeft: "border-l-2 border-l-emerald-500/40",
+    openBg: "bg-emerald-500/[0.06]",
+  },
+  deliverables: {
+    icon: "text-cyan-300/70",
+    iconActive: "text-cyan-200",
+    dot: "bg-cyan-400",
+    borderLeft: "border-l-2 border-l-cyan-500/40",
+    openBg: "bg-cyan-500/[0.06]",
+  },
+  account: NEUTRAL_ACCENT,
+};
+
+/**
  * Sidebar nav after the Phase 2 tool-merge sweep. Tools that were
  * folded into a unified parent (SXO/GEO/E-E-A-T → Audits, Brand SERP /
  * Knowledge Panel / Author authority → Brand visibility, etc.) are
@@ -394,12 +509,13 @@ export function Sidebar({
           const hasActiveChild = group.items.some((it) =>
             isActive(pathname, it.href),
           );
+          const accent = GROUP_ACCENTS[group.id] ?? NEUTRAL_ACCENT;
           return (
             <div
               key={group.id}
               className={`mt-1.5 first:mt-0 ${
                 isOpen && !collapsed && !group.pinned
-                  ? "rounded-md bg-sidebar-accent/[0.18] pb-1"
+                  ? `rounded-md pb-1 ${accent.openBg} ${accent.borderLeft}`
                   : ""
               }`}
             >
@@ -407,20 +523,23 @@ export function Sidebar({
                 <button
                   type="button"
                   onClick={() => toggleGroup(group.id)}
-                  className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm font-semibold transition-colors ${
+                  className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-[13px] font-semibold tracking-tight transition-colors ${
                     isOpen
                       ? "text-sidebar-foreground"
                       : hasActiveChild
-                        ? "text-sidebar-foreground/80 hover:text-sidebar-foreground"
-                        : "text-sidebar-foreground/55 hover:text-sidebar-foreground"
+                        ? "text-sidebar-foreground/85 hover:text-sidebar-foreground"
+                        : "text-sidebar-foreground/70 hover:text-sidebar-foreground"
                   }`}
                 >
                   <span className="flex items-center gap-1.5">
                     {/* Tiny dot when a group has the current page but
                         is collapsed — surfaces "you're in here" without
-                        expanding the group */}
+                        expanding the group. Color-keyed to the group
+                        so the user gets a quick "section identity" read. */}
                     {hasActiveChild && !isOpen && (
-                      <span className="size-1.5 shrink-0 rounded-full bg-primary" />
+                      <span
+                        className={`size-1.5 shrink-0 rounded-full ${accent.dot}`}
+                      />
                     )}
                     {group.title}
                   </span>
@@ -432,7 +551,7 @@ export function Sidebar({
                 </button>
               )}
               {!collapsed && group.pinned && (
-                <div className="px-2 py-1.5 text-sm font-semibold text-sidebar-foreground/60">
+                <div className="px-2 py-1.5 text-[13px] font-semibold tracking-tight text-sidebar-foreground/75">
                   {group.title}
                 </div>
               )}
@@ -478,9 +597,14 @@ export function Sidebar({
                               }}
                             />
                           )}
+                          {/* Icon tinted by parent group accent —
+                              active rows brighten to the accent's
+                              "200" shade. Gives each section its own
+                              visual identity without changing the row
+                              chrome. */}
                           <Icon
-                            className={`relative z-10 shrink-0 size-3.5 ${
-                              active ? "text-foreground" : ""
+                            className={`relative z-10 shrink-0 size-3.5 transition-colors ${
+                              active ? accent.iconActive : accent.icon
                             }`}
                           />
                           {!collapsed && (
