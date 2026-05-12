@@ -7,9 +7,13 @@ type ScoreGaugeProps = {
   label?: string;
 };
 
+/**
+ * Thresholds match the inline score panel used in the client-page
+ * hero so a 76 reads the same shade of emerald in both places.
+ */
 function scoreColor(score: number | null) {
   if (score === null) return { stroke: "#3a3f51", text: "text-muted-foreground" };
-  if (score >= 80) return { stroke: "url(#gauge-green)", text: "text-gradient-emerald" };
+  if (score >= 75) return { stroke: "url(#gauge-green)", text: "text-gradient-emerald" };
   if (score >= 50) return { stroke: "url(#gauge-amber)", text: "text-gradient-amber" };
   return { stroke: "url(#gauge-rose)", text: "text-gradient-rose" };
 }

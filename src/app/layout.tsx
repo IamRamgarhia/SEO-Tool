@@ -11,6 +11,7 @@ import { ConfirmDialogProvider } from "@/components/ui/confirm-dialog";
 import { ServiceWorkerRegister } from "@/components/shell/sw-register";
 import { ClientErrorCapture } from "@/components/shell/client-error-capture";
 import { QuickAddClientProvider } from "@/components/shell/quick-add-client-dialog";
+import { ShortcutsHelpHotkey } from "@/components/shell/shortcuts-help-hotkey";
 import { getUnreadCounts } from "@/lib/unread-counts";
 import { getUiMode } from "./settings/ui-actions";
 import "./globals.css";
@@ -112,6 +113,7 @@ export default async function RootLayout({
             <Toaster />
             <ServiceWorkerRegister />
             <ClientErrorCapture />
+            <ShortcutsHelpHotkey />
           </QuickAddClientProvider>
         </ConfirmDialogProvider>
       </body>

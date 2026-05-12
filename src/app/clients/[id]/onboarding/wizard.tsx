@@ -613,16 +613,29 @@ function CompletedStep({ client }: { client: WizardClient }) {
   );
 }
 
+/**
+ * Skip-onboarding control. Rendered as a plain button (no nested form)
+ * because the wizard's steps each have their own outer <form> — nesting
+ * a second one was a React hydration error. Uses formAction on the
+ * outer form's submit to route to a different server action would
+ * confuse the wizard's stepper state, so we fire skipOnboarding via a
+ * transition instead.
+ */
 function SkipButton({ clientId }: { clientId: number }) {
+  const [pending, start] = useTransition();
   return (
-    <form action={skipOnboarding.bind(null, clientId)}>
-      <button
-        type="submit"
-        className="text-xs text-muted-foreground hover:text-foreground hover:underline"
-      >
-        Skip onboarding
-      </button>
-    </form>
+    <button
+      type="button"
+      disabled={pending}
+      onClick={() =>
+        start(async () => {
+          await skipOnboarding(clientId);
+        })
+      }
+      className="text-xs text-muted-foreground hover:text-foreground hover:underline disabled:opacity-50"
+    >
+      {pending ? "Skipping…" : "Skip onboarding"}
+    </button>
   );
 }
 
