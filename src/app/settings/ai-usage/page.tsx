@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/shell/page-header";
 import { microsToDisplay } from "@/lib/ai-cost";
 import { getSetting } from "@/lib/settings-store";
 import { CapForm } from "./cap-form";
+import { UsageCharts } from "./usage-charts";
 
 export default async function AiUsagePage() {
   const since = new Date();
@@ -84,8 +85,6 @@ export default async function AiUsagePage() {
       cost: slice.reduce((s, r) => s + r.costMicros, 0),
     });
   }
-  const maxCallsDay = Math.max(1, ...days.map((d) => d.calls));
-
   const cap = (await getSetting<number | string>("ai.monthly_cap_usd")) ?? "";
   const capUsd = Number(cap);
   const monthSpentUsd = monthCost / 1_000_000;
@@ -161,33 +160,8 @@ export default async function AiUsagePage() {
         </section>
       )}
 
-      {/* Daily sparkline */}
-      <section className="glass-apple relative overflow-hidden rounded-2xl p-5 space-y-3">
-        <h2 className="text-sm font-semibold flex items-center gap-2">
-          <Activity className="size-4 text-violet-300" />
-          Last 30 days (calls per day)
-        </h2>
-        <div className="flex h-24 items-end gap-1">
-          {days.map((d) => (
-            <div
-              key={d.day}
-              className="flex flex-1 flex-col items-center justify-end"
-              title={`${d.day}: ${d.calls} calls · ${microsToDisplay(d.cost)}`}
-            >
-              <div
-                className="w-full rounded-sm bg-violet-400/60"
-                style={{
-                  height: `${Math.round((d.calls / maxCallsDay) * 80) || 2}px`,
-                }}
-              />
-            </div>
-          ))}
-        </div>
-        <div className="flex justify-between text-[10px] text-muted-foreground">
-          <span>{days[0]?.day}</span>
-          <span>{days[days.length - 1]?.day}</span>
-        </div>
-      </section>
+      {/* Daily bar chart + per-feature donut — Tremor-powered */}
+      <UsageCharts days={days} featureRows={featureRows} />
 
       {/* Cap form */}
       <section className="glass-apple relative overflow-hidden rounded-2xl p-5 space-y-3">

@@ -20,6 +20,7 @@ import {
   deleteTask,
   setTaskStatus,
 } from "./actions";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 
 const priorityConfig: Record<
   string,
@@ -229,13 +230,19 @@ export function TasksBulkList({
             <button
               type="button"
               disabled={pending}
-              onClick={() =>
+              onClick={async () => {
+                const ok = await confirmDialog({
+                  title: `Delete ${ids.length} task${ids.length === 1 ? "" : "s"}?`,
+                  description: "This can't be undone. The tasks will be removed from your list.",
+                  confirmLabel: "Delete",
+                  destructive: true,
+                });
+                if (!ok) return;
                 startTransition(async () => {
-                  if (!confirm(`Delete ${ids.length} task(s)?`)) return;
                   await bulkDeleteTasks(ids);
                   clear();
-                })
-              }
+                });
+              }}
               className="inline-flex items-center gap-1 rounded-md bg-rose-500/15 px-2.5 py-1 text-xs font-medium text-rose-300 ring-1 ring-inset ring-rose-500/30 hover:bg-rose-500/25"
             >
               <Trash2 className="size-3" /> Delete

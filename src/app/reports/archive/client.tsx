@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useTransition } from "react";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Download,
   Filter,
@@ -115,8 +116,14 @@ export function ArchiveClient({
               <button
                 type="button"
                 disabled={pending}
-                onClick={() => {
-                  if (!confirm("Delete this archived report?")) return;
+                onClick={async () => {
+                  const ok = await confirmDialog({
+                    title: "Delete this archived report?",
+                    description: "The PDF and its associated record will be removed. Can't be undone.",
+                    confirmLabel: "Delete report",
+                    destructive: true,
+                  });
+                  if (!ok) return;
                   startTransition(async () => {
                     await deleteArchivedReport(a.id);
                   });

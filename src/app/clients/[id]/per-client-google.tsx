@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { disconnectPerClientGoogle } from "./per-client-google-actions";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 
 export function PerClientGoogleConnect({
   clientId,
@@ -60,8 +61,14 @@ export function PerClientGoogleConnect({
     }, 500);
   }
 
-  function disconnect() {
-    if (!confirm("Disconnect this client's separate Google account?")) return;
+  async function disconnect() {
+    const ok = await confirmDialog({
+      title: "Disconnect Google for this client?",
+      description: "Removes the per-client OAuth tokens. The workspace Google connection (used by other clients) stays intact. You can reconnect any time.",
+      confirmLabel: "Disconnect",
+      destructive: true,
+    });
+    if (!ok) return;
     startTransition(async () => {
       await disconnectPerClientGoogle(clientId);
       window.location.reload();
