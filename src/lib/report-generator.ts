@@ -820,7 +820,13 @@ export async function generateReportPdf(
       );
     }
     doc.moveDown(0.5);
-    drawTrafficSparkline(doc, ga4Daily.map((r) => r.sessions));
+    drawTrafficSparkline(
+      doc,
+      ga4Daily.map((r) => r.sessions),
+      {
+        dates: ga4Daily.map((r) => new Date(r.date + "T00:00:00Z")),
+      },
+    );
     doc.moveDown(1.5);
   }
 
@@ -1448,7 +1454,19 @@ function drawKeywordTable(
   }
 }
 
-function drawTrafficSparkline(doc: PDFKit.PDFDocument, values: number[]) {
+/**
+ * Series renderer for the GA4 organic-traffic chart. When the caller
+ * provides per-point dates (`opts.dates`), any Google algorithm update
+ * whose rollout window overlaps the chart's range is annotated with a
+ * dashed vertical line + a tiny label below — so a traffic drop the
+ * reader is looking at lines up visibly against the Google update
+ * that probably caused it.
+ */
+function drawTrafficSparkline(
+  doc: PDFKit.PDFDocument,
+  values: number[],
+  opts?: { dates?: Date[] },
+) {
   if (values.length < 2) return;
   const left = doc.page.margins.left;
   const right = doc.page.width - doc.page.margins.right;
@@ -1465,6 +1483,40 @@ function drawTrafficSparkline(doc: PDFKit.PDFDocument, values: number[]) {
     .roundedRect(left, top, w, h, 4)
     .fillAndStroke("#f8f8fc", palette.rule);
 
+  // Algorithm-update overlay — drawn behind the trend line so the line
+  // stays the dominant visual element. Only fires when caller passes
+  // dates aligned 1-1 with values.
+  const annotations: { x: number; label: string }[] = [];
+  if (opts?.dates && opts.dates.length === values.length) {
+    const firstT = opts.dates[0].getTime();
+    const lastT = opts.dates[opts.dates.length - 1].getTime();
+    if (lastT > firstT) {
+      // Lazy require so the report-generator module graph isn't forced
+      // to pull algorithm-updates at import time.
+
+      const { ALGO_UPDATES } = require("./algorithm-updates") as {
+        ALGO_UPDATES: { date: string; endDate?: string; name: string }[];
+      };
+      for (const u of ALGO_UPDATES) {
+        const startT = new Date(u.date + "T00:00:00Z").getTime();
+        if (isNaN(startT)) continue;
+        if (startT < firstT || startT > lastT) continue;
+        const x = left + ((startT - firstT) / (lastT - firstT)) * w;
+        annotations.push({ x, label: u.name });
+      }
+    }
+  }
+
+  // Draw annotation rules first (dashed gray, behind the polyline)
+  if (annotations.length > 0) {
+    doc.save();
+    doc.strokeColor(palette.mute).lineWidth(0.6).dash(2, { space: 3 });
+    for (const a of annotations) {
+      doc.moveTo(a.x, top + 2).lineTo(a.x, top + h - 2).stroke();
+    }
+    doc.undash().restore();
+  }
+
   // Build polyline path
   const pts: [number, number][] = values.map((v, i) => [
     left + i * step,
@@ -1475,6 +1527,25 @@ function drawTrafficSparkline(doc: PDFKit.PDFDocument, values: number[]) {
     doc.moveTo(pts[i][0], pts[i][1]).lineTo(pts[i + 1][0], pts[i + 1][1]).stroke();
   }
   doc.y = top + h + 4;
+
+  // Tiny legend below the chart explaining the dashed lines. Only when
+  // we actually drew at least one annotation.
+  if (annotations.length > 0) {
+    const labels = annotations
+      .map((a) => a.label)
+      .slice(0, 3)
+      .join(" · ");
+    const extra = annotations.length > 3 ? ` (+${annotations.length - 3} more)` : "";
+    doc
+      .fillColor(palette.mute)
+      .font("Helvetica-Oblique")
+      .fontSize(8)
+      .text(`Dashed lines mark Google updates: ${labels}${extra}`, left, doc.y, {
+        width: w,
+      })
+      .font("Helvetica");
+    doc.y += 4;
+  }
 }
 
 function drawHealthScoreBlock(
