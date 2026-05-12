@@ -120,6 +120,7 @@ const EXPLICIT: Record<string, ToolCategoryId> = {
   "/tools/youtube": "keywords",
   "/tools/serp-volatility": "keywords",
   "/tools/cannibalization": "keywords",
+  "/tools/ads-funnel": "keywords",
 
   // Backlinks & outreach
   "/tools/backlink-discovery": "backlinks",
