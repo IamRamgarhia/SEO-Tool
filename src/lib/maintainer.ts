@@ -33,16 +33,21 @@ export const MAINTAINER = {
    */
   upi: process.env.MAINTAINER_UPI ?? "princeramgarhiaa-1@okaxis",
   /**
-   * Buy Me A Coffee URL — international fallback for users who can't
-   * pay via UPI. Empty string hides it.
+   * PayPal donate URL — international fallback for users who can't
+   * pay via UPI. The legacy /donate URL accepts a raw email address,
+   * so we don't need a paypal.me handle. Empty string hides it.
    */
-  bmc: process.env.MAINTAINER_BMC ?? "https://buymeacoffee.com/dicecodes",
+  paypal:
+    process.env.MAINTAINER_PAYPAL ??
+    "https://www.paypal.com/donate/?business=princeramgarhiaa@gmail.com&currency_code=USD&item_name=Support%20DiceCodes",
   /**
-   * Commercial-license contact. PolyForm Noncommercial allows free
-   * self-hosting for personal/agency use but bars resale or paid SaaS
-   * hosting; commercial users need a paid license — they email this.
+   * Commercial-license contact + custom-software enquiries. PolyForm
+   * Noncommercial allows free self-hosting and freelance/agency use
+   * but bars resale or paid-SaaS hosting; commercial users email this.
+   * Same address also handles inbound enquiries about hiring DiceCodes
+   * to build custom software (see /about).
    */
-  contactEmail: process.env.MAINTAINER_EMAIL ?? "hello@dicecodes.com",
+  contactEmail: process.env.MAINTAINER_EMAIL ?? "Contact@dicecodes.com",
   /**
    * Optional tagline shown beneath the maintainer name.
    */

@@ -4,12 +4,12 @@ import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import {
   Code2,
-  Coffee,
   Copy,
   Check,
   Heart,
   IndianRupee,
   Sparkles,
+  Wallet,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -333,26 +333,26 @@ function SupportDialog({ onClose }: { onClose: () => void }) {
             </section>
           )}
 
-          {MAINTAINER.bmc && (
-            <section className="rounded-xl border border-amber-500/30 bg-amber-500/[0.04] p-4">
+          {MAINTAINER.paypal && (
+            <section className="rounded-xl border border-sky-500/30 bg-sky-500/[0.04] p-4">
               <div className="flex items-center gap-2">
-                <span className="grid size-7 place-items-center rounded-md bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30">
-                  <Coffee className="size-3.5" />
+                <span className="grid size-7 place-items-center rounded-md bg-sky-500/15 text-sky-300 ring-1 ring-inset ring-sky-500/30">
+                  <Wallet className="size-3.5" />
                 </span>
                 <div>
-                  <h3 className="text-sm font-semibold">Buy Me A Coffee</h3>
+                  <h3 className="text-sm font-semibold">PayPal</h3>
                   <p className="text-[10px] text-muted-foreground">
-                    International · cards / Apple Pay / Google Pay
+                    International · cards / PayPal balance / bank
                   </p>
                 </div>
               </div>
               <a
-                href={MAINTAINER.bmc}
+                href={MAINTAINER.paypal}
                 target="_blank"
                 rel="noreferrer noopener"
-                className="mt-3 inline-flex h-9 w-full items-center justify-center rounded-md bg-amber-500/15 px-3 text-xs font-medium text-amber-300 ring-1 ring-inset ring-amber-500/30 hover:bg-amber-500/25"
+                className="mt-3 inline-flex h-9 w-full items-center justify-center rounded-md bg-sky-500/15 px-3 text-xs font-medium text-sky-300 ring-1 ring-inset ring-sky-500/30 hover:bg-sky-500/25"
               >
-                Open Buy Me A Coffee →
+                Donate via PayPal →
               </a>
             </section>
           )}

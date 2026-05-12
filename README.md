@@ -388,7 +388,7 @@ The tool detects 2,500+ technologies via Wappalyzer. Tech-stack-aware recommenda
 - Strip the DiceCodes maintainer credit and pass it off as your own
 
 **For commercial licensing** (paid SaaS hosting, white-label resale, OEM embedding):  
-📧 [hello@dicecodes.com](mailto:hello@dicecodes.com)
+📧 [Contact@dicecodes.com](mailto:Contact@dicecodes.com?subject=Commercial%20license%20enquiry)
 
 ---
 
@@ -398,7 +398,7 @@ If this tool saves you a ₹10,000+/month Ahrefs subscription, the cheapest way 
 
 - **⭐ Star this repo** — helps other SEOs discover it (huge impact, zero cost)
 - **💜 Tip via UPI** — `princeramgarhiaa-1@okaxis` (₹100 / ₹300 / ₹500 / ₹1000 presets in-app)
-- **☕ Buy Me A Coffee** (international) — <https://buymeacoffee.com/dicecodes>
+- **💳 Donate via PayPal** (international, cards / bank / PayPal balance) — <https://www.paypal.com/donate/?business=princeramgarhiaa@gmail.com&currency_code=USD&item_name=Support%20DiceCodes>
 - **🛠️ Contribute** — open issues, send PRs, suggest features
 
 ---
@@ -418,7 +418,7 @@ This entire SEO platform (150+ tools, AI daily agent, headless browser pool, whi
 | 🛠️ **Internal tools + dashboards** for ops teams | 2-6 weeks |
 | 💼 **SaaS platforms** with billing, auth, multi-tenancy | 8-16 weeks |
 
-📧 **Email [hello@dicecodes.com](mailto:hello@dicecodes.com)** to start your build  
+📧 **Email [Contact@dicecodes.com](mailto:Contact@dicecodes.com?subject=Custom%20software%20enquiry)** to start your build  
 🌐 **See past work at [dicecodes.com](https://dicecodes.com)**
 
 > *Separate from the SEO tool's license — that conversation is about reselling THIS software. This is about building NEW software for your idea.*
@@ -429,7 +429,7 @@ This entire SEO platform (150+ tools, AI daily agent, headless browser pool, whi
 
 Solo-built. No VC. No growth team. Just one developer trying to make pro-grade SEO tooling permanently free for everyone.
 
-**🌐** [dicecodes.com](https://dicecodes.com) · **📧** hello@dicecodes.com · **🐙** [GitHub](https://github.com/IamRamgarhia/seo)
+**🌐** [dicecodes.com](https://dicecodes.com) · **📧** [Contact@dicecodes.com](mailto:Contact@dicecodes.com) · **🐙** [GitHub](https://github.com/IamRamgarhia/seo)
 
 ---
 
