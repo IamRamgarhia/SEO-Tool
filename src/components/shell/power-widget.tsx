@@ -15,6 +15,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { Power, RefreshCw, Square, Settings as Cog, X } from "lucide-react";
 import { safeFetch } from "@/lib/safe-fetch";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 
 export function PowerWidget() {
   const [open, setOpen] = useState(false);
@@ -56,9 +57,12 @@ export function PowerWidget() {
   }, [open]);
 
   async function restart() {
-    if (!confirm("Restart the server now? The page will reload itself once it's back (8–15 seconds).")) {
-      return;
-    }
+    const ok = await confirmDialog({
+      title: "Restart the server?",
+      description: "The page will reload itself once it's back (8–15 seconds).",
+      confirmLabel: "Restart",
+    });
+    if (!ok) return;
     setBusy("restart");
     setMsg("Restarting…");
     const r = await safeFetch<{ ok: boolean; message?: string }>(
@@ -100,13 +104,14 @@ export function PowerWidget() {
   }
 
   async function stop() {
-    if (
-      !confirm(
-        "Stop the server? The app will go offline. Use your desktop shortcut or run seo.cmd to start it again.",
-      )
-    ) {
-      return;
-    }
+    const ok = await confirmDialog({
+      title: "Stop the server?",
+      description:
+        "The app will go offline. Launch it again from your desktop shortcut or by running seo.cmd.",
+      confirmLabel: "Stop server",
+      destructive: true,
+    });
+    if (!ok) return;
     setBusy("stop");
     setMsg("Stopping…");
     const r = await safeFetch<{ ok: boolean; message?: string }>(

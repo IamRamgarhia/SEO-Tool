@@ -6,6 +6,7 @@ import { AIAssistant } from "@/components/shell/ai-assistant";
 import { PowerWidget } from "@/components/shell/power-widget";
 import { FirstRunPrompt } from "@/components/shell/first-run-prompt";
 import { Toaster } from "@/components/shell/toaster";
+import { ConfirmDialogProvider } from "@/components/ui/confirm-dialog";
 import { ServiceWorkerRegister } from "@/components/shell/sw-register";
 import { ClientErrorCapture } from "@/components/shell/client-error-capture";
 import { QuickAddClientProvider } from "@/components/shell/quick-add-client-dialog";
@@ -74,23 +75,25 @@ export default async function RootLayout({
       className={`dark ${sansFont.variable} ${monoFont.variable} h-full antialiased`}
     >
       <body className="h-screen overflow-hidden bg-background text-foreground">
-        <QuickAddClientProvider>
-          <div className="flex h-full">
-            <Sidebar unreadByHref={unreadByHref} />
-            <div className="flex h-full min-w-0 flex-1 flex-col">
-              <TopBar unreadByHref={unreadByHref} />
-              <main className="flex-1 overflow-y-auto p-4 md:p-6">
-                {children}
-              </main>
+        <ConfirmDialogProvider>
+          <QuickAddClientProvider>
+            <div className="flex h-full">
+              <Sidebar unreadByHref={unreadByHref} />
+              <div className="flex h-full min-w-0 flex-1 flex-col">
+                <TopBar unreadByHref={unreadByHref} />
+                <main className="flex-1 overflow-y-auto p-4 md:p-6">
+                  {children}
+                </main>
+              </div>
             </div>
-          </div>
-          <AIAssistant />
-          <PowerWidget />
-          <FirstRunPrompt />
-          <Toaster />
-          <ServiceWorkerRegister />
-          <ClientErrorCapture />
-        </QuickAddClientProvider>
+            <AIAssistant />
+            <PowerWidget />
+            <FirstRunPrompt />
+            <Toaster />
+            <ServiceWorkerRegister />
+            <ClientErrorCapture />
+          </QuickAddClientProvider>
+        </ConfirmDialogProvider>
       </body>
     </html>
   );

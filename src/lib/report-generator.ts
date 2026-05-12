@@ -600,6 +600,24 @@ export async function generateReportPdf(
     doc.on("end", () => resolve(Buffer.concat(buffers)));
   });
 
+  // ═════════════════════════════════════════════════════════════════
+  // Cover page (NEW — Reports v2): full-bleed brand gradient, big-
+  // number wow factor, period framing. Page 2 onwards keeps the
+  // original layout for backwards compat with all stakeholder
+  // variants.
+  // ═════════════════════════════════════════════════════════════════
+  drawCoverPage(doc, {
+    clientName: client.name,
+    clientUrl: client.url,
+    score: latest?.score ?? null,
+    previousScore: previous?.score ?? null,
+    brandColor: palette.brand,
+    brandName: brand.name,
+    brandLogo: brand.logoBuffer && brand.logoMime ? { buffer: brand.logoBuffer, mime: brand.logoMime } : null,
+    template: TEMPLATE_LABELS[template],
+  });
+  doc.addPage();
+
   // === Cover ===
   // Header strip: agency logo when configured (white-label), otherwise the
   // client's own auto-fetched logo so the report still feels branded.
@@ -1508,4 +1526,175 @@ function drawHealthScoreBlock(
 
   // Move cursor below the box
   doc.y = top + height + 10;
+}
+
+/**
+ * Full-bleed cover page (Reports v2). Brand-color background, top
+ * logo, big-number wow (latest health score), client name + URL at
+ * the bottom, prepared-by attribution.
+ *
+ * Renders inside the current page; caller should immediately
+ * doc.addPage() after this returns so the content layout starts fresh.
+ */
+function drawCoverPage(
+  doc: PDFKit.PDFDocument,
+  opts: {
+    clientName: string;
+    clientUrl: string;
+    score: number | null;
+    previousScore: number | null;
+    brandColor: string;
+    brandName: string | null;
+    brandLogo: { buffer: Buffer; mime: string | null } | null;
+    template: string;
+  },
+) {
+  const W = doc.page.width;
+  const H = doc.page.height;
+
+  // Full-bleed background
+  doc.save();
+  doc.rect(0, 0, W, H).fill(opts.brandColor);
+
+  // Subtle radial overlay at top-left for depth (approximate via
+  // overlapping translucent rectangles — pdfkit has no gradients).
+  doc.rect(0, 0, W * 0.7, H * 0.5).fillOpacity(0.08).fill("#ffffff");
+  doc.fillOpacity(1);
+
+  // Top: logo + agency name
+  const padX = 56;
+  const padY = 56;
+  if (opts.brandLogo) {
+    try {
+      doc.image(opts.brandLogo.buffer, padX, padY, { fit: [140, 50] });
+    } catch {
+      // ignore
+    }
+  } else if (opts.brandName) {
+    doc
+      .font("Helvetica-Bold")
+      .fillColor("#ffffff")
+      .fontSize(14)
+      .text(opts.brandName, padX, padY);
+  }
+
+  // Top-right: template label
+  doc
+    .font("Helvetica")
+    .fillColor("#ffffff")
+    .fillOpacity(0.7)
+    .fontSize(9)
+    .text(
+      opts.template.toUpperCase(),
+      W - padX - 200,
+      padY + 4,
+      { width: 200, align: "right", characterSpacing: 2 },
+    )
+    .fillOpacity(1);
+
+  // Big number — centered vertically + horizontally. Latest health
+  // score is the canonical metric on the cover. Delta vs previous
+  // sits beneath if both exist.
+  const centerY = H * 0.42;
+  const score = opts.score;
+  const scoreText = score === null ? "—" : String(score);
+  doc
+    .font("Helvetica-Bold")
+    .fillColor("#ffffff")
+    .fontSize(160)
+    .text(scoreText, 0, centerY - 70, { width: W, align: "center" });
+
+  doc
+    .font("Helvetica")
+    .fillColor("#ffffff")
+    .fillOpacity(0.75)
+    .fontSize(12)
+    .text("Health score / 100", 0, centerY + 100, {
+      width: W,
+      align: "center",
+      characterSpacing: 1,
+    })
+    .fillOpacity(1);
+
+  // Delta vs previous
+  if (score !== null && opts.previousScore !== null) {
+    const delta = score - opts.previousScore;
+    const sign = delta > 0 ? "+" : "";
+    doc
+      .font("Helvetica-Bold")
+      .fillColor("#ffffff")
+      .fillOpacity(0.9)
+      .fontSize(14)
+      .text(
+        `${sign}${delta} vs previous (${opts.previousScore})`,
+        0,
+        centerY + 124,
+        { width: W, align: "center" },
+      )
+      .fillOpacity(1);
+  }
+
+  // Bottom-left: client name + URL
+  const bottomY = H - padY - 90;
+  doc
+    .font("Helvetica")
+    .fillColor("#ffffff")
+    .fillOpacity(0.6)
+    .fontSize(9)
+    .text("PREPARED FOR", padX, bottomY, { characterSpacing: 2 })
+    .fillOpacity(1);
+  doc
+    .moveDown(0.4)
+    .font("Helvetica-Bold")
+    .fillColor("#ffffff")
+    .fontSize(24)
+    .text(opts.clientName, padX, doc.y, { lineGap: 2 });
+  doc
+    .moveDown(0.2)
+    .font("Helvetica")
+    .fillColor("#ffffff")
+    .fillOpacity(0.7)
+    .fontSize(11)
+    .text(opts.clientUrl.replace(/^https?:\/\//, ""), padX, doc.y)
+    .fillOpacity(1);
+
+  // Bottom-right: period
+  const periodLabel = new Date().toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+  doc
+    .font("Helvetica")
+    .fillColor("#ffffff")
+    .fillOpacity(0.6)
+    .fontSize(9)
+    .text("REPORT PERIOD", W - padX - 200, bottomY, {
+      width: 200,
+      align: "right",
+      characterSpacing: 2,
+    })
+    .fillOpacity(1);
+  doc
+    .font("Helvetica-Bold")
+    .fillColor("#ffffff")
+    .fontSize(16)
+    .text(periodLabel, W - padX - 200, doc.y + 6, {
+      width: 200,
+      align: "right",
+    });
+
+  // Prepared by line
+  if (opts.brandName) {
+    doc
+      .font("Helvetica")
+      .fillColor("#ffffff")
+      .fillOpacity(0.55)
+      .fontSize(9)
+      .text(`Prepared by ${opts.brandName}`, padX, H - padY - 10, {
+        characterSpacing: 1,
+      })
+      .fillOpacity(1);
+  }
+
+  doc.restore();
 }

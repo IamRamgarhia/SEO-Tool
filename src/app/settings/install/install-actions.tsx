@@ -11,6 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { safeFetch } from "@/lib/safe-fetch";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 
 // Chrome's beforeinstallprompt event isn't in the TS lib yet.
 type BeforeInstallPromptEvent = Event & {
@@ -99,7 +100,13 @@ export function InstallActions() {
   }
 
   async function removeShortcut() {
-    if (!confirm("Remove the desktop & Start Menu shortcuts?")) return;
+    const ok = await confirmDialog({
+      title: "Remove shortcuts?",
+      description: "Removes the Desktop and Start Menu entries. The app itself stays installed — you can recreate the shortcuts any time.",
+      confirmLabel: "Remove shortcuts",
+      destructive: true,
+    });
+    if (!ok) return;
     setShortcutBusy(true);
     setShortcutMsg(null);
     const r = await safeFetch<{ ok: true; message: string }>(

@@ -8,6 +8,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { safeFetch } from "@/lib/safe-fetch";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 
 export function RestoreForm() {
   const [pending, setPending] = useState(false);
@@ -25,13 +26,13 @@ export function RestoreForm() {
       setResult({ ok: false, error: "Pick a .db file first." });
       return;
     }
-    if (
-      !confirm(
-        `This will REPLACE your current data.db with ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB). Your existing data will be auto-saved as data.db.bak-... but you'll need to restart the server to fully reload. Continue?`,
-      )
-    ) {
-      return;
-    }
+    const ok = await confirmDialog({
+      title: `Replace data.db with ${file.name}?`,
+      description: `Uploading ${(file.size / 1024 / 1024).toFixed(2)} MB. Your existing database is auto-saved as data.db.bak-… but the server needs a restart to load the new one.`,
+      confirmLabel: "Replace database",
+      destructive: true,
+    });
+    if (!ok) return;
     setPending(true);
     setResult(null);
     const formData = new FormData();
