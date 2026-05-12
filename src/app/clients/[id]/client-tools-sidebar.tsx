@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ChevronDown, Search, Wrench, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Lock, Search, Wrench, X } from "lucide-react";
 import {
   buildClientToolGroups,
   CLIENT_TOOL_NEEDS_HINTS,
@@ -10,13 +10,18 @@ import {
 } from "./client-tools-launcher";
 
 /**
- * Per-client tool launcher as a secondary sidebar. Sits to the right of
- * the main shell sidebar and lists every tool pre-wired with this
- * client's URL / GSC / GBP / WP context. Sticky on the desktop so the
- * user can scroll the main content without losing the launcher.
+ * Per-client tool launcher as a secondary sidebar. Compact, scannable,
+ * sticky on desktop. Mobile collapses to a button + sheet so the main
+ * content gets full width on phone-size viewports.
  *
- * On narrow viewports it collapses to a button that opens a slide-down
- * panel — same data, no horizontal real estate cost.
+ * Design choices that took two iterations to land on:
+ *  - 280px wide so 2-line titles + 2-line blurbs don't get crushed
+ *  - Group "needs setup" surface as a small lock-icon hover-tooltip,
+ *    not a chunky amber badge — the badge was dominating visual weight
+ *  - Per-group colored dot + tool-count chip so the section list is
+ *    scannable at a glance
+ *  - Search input is sticky at the top of the scroll area so the user
+ *    never has to scroll up to filter
  */
 export function ClientToolsSidebar({
   client,
@@ -58,43 +63,70 @@ export function ClientToolsSidebar({
   // Inner list — re-used in both desktop sticky panel and mobile sheet
   const list = (
     <>
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Filter tools…"
-          className="h-8 w-full rounded-md border border-white/10 bg-card/60 pl-8 pr-2 text-xs focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/40"
-        />
+      <div className="sticky top-0 z-10 -mx-3 -mt-3 mb-3 border-b border-white/[0.04] bg-card/95 px-3 py-3 backdrop-blur">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Filter tools…"
+            className="h-9 w-full rounded-md border border-white/10 bg-background/60 pl-8 pr-8 text-xs placeholder:text-muted-foreground/60 focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/40"
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              className="absolute right-1.5 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded text-muted-foreground hover:bg-white/10 hover:text-foreground"
+              aria-label="Clear filter"
+            >
+              <X className="size-3" />
+            </button>
+          )}
+        </div>
+        {q && (
+          <p className="mt-1.5 text-[10px] text-muted-foreground">
+            {filteredGroups.reduce((s, g) => s + g.tools.length, 0)} match
+            {filteredGroups.reduce((s, g) => s + g.tools.length, 0) === 1
+              ? ""
+              : "es"}
+          </p>
+        )}
       </div>
 
-      <div className="mt-2 space-y-3">
+      <div className="space-y-4">
         {filteredGroups.length === 0 && (
           <p className="px-1 py-4 text-center text-xs text-muted-foreground">
             No tools match &ldquo;{query}&rdquo;.
           </p>
         )}
-        {filteredGroups.map((g) => {
+        {filteredGroups.map((g, gIdx) => {
           const collapsed = collapsedGroups.has(g.label);
+          const groupAccent = GROUP_ACCENTS[gIdx % GROUP_ACCENTS.length];
           return (
-            <div key={g.label}>
+            <section key={g.label}>
               <button
                 type="button"
                 onClick={() => toggleGroup(g.label)}
-                className="flex w-full items-center justify-between rounded px-1.5 py-1 text-left transition-colors hover:bg-white/[0.03]"
+                className="group flex w-full items-center gap-2 rounded-md px-1 py-1.5 text-left transition-colors hover:bg-white/[0.04]"
               >
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {g.label} · {g.tools.length}
-                </span>
-                <ChevronDown
-                  className={`size-3 text-muted-foreground transition-transform ${
-                    collapsed ? "-rotate-90" : ""
-                  }`}
+                <span
+                  className={`size-1.5 shrink-0 rounded-full ${groupAccent.dot}`}
                 />
+                <span className="flex-1 truncate text-[10px] font-semibold uppercase tracking-wider text-foreground/80">
+                  {g.label}
+                </span>
+                <span className="rounded bg-white/[0.04] px-1.5 py-0.5 text-[9px] font-medium tabular-nums text-muted-foreground">
+                  {g.tools.length}
+                </span>
+                {collapsed ? (
+                  <ChevronRight className="size-3 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="size-3 text-muted-foreground" />
+                )}
               </button>
               {!collapsed && (
-                <ul className="mt-1 space-y-0.5">
+                <ul className="mt-1 space-y-px">
                   {g.tools.map((t) => {
                     const Icon = t.icon;
                     return (
@@ -102,21 +134,32 @@ export function ClientToolsSidebar({
                         <Link
                           href={t.href}
                           onClick={() => setMobileOpen(false)}
-                          className="group flex items-start gap-2 rounded-md px-1.5 py-1.5 transition-colors hover:bg-white/[0.05]"
+                          className="group flex items-start gap-2.5 rounded-md px-2 py-2 transition-colors hover:bg-white/[0.05]"
                         >
-                          <Icon className="mt-0.5 size-3.5 shrink-0 text-violet-300" />
+                          <span
+                            className={`mt-0.5 grid size-6 shrink-0 place-items-center rounded-md ring-1 ring-inset ${groupAccent.iconBg}`}
+                          >
+                            <Icon className={`size-3 ${groupAccent.icon}`} />
+                          </span>
                           <span className="min-w-0 flex-1">
-                            <span className="block truncate text-[12px] font-medium leading-tight group-hover:text-violet-200">
-                              {t.title}
+                            <span className="flex items-center gap-1.5">
+                              <span
+                                className={`block flex-1 truncate text-[13px] font-medium leading-tight transition-colors ${groupAccent.hoverText}`}
+                              >
+                                {t.title}
+                              </span>
+                              {t.needs && (
+                                <span
+                                  title={CLIENT_TOOL_NEEDS_HINTS[t.needs]}
+                                  className="grid size-4 shrink-0 place-items-center rounded text-amber-300/80"
+                                >
+                                  <Lock className="size-3" />
+                                </span>
+                              )}
                             </span>
-                            <span className="block truncate text-[10px] leading-tight text-muted-foreground">
+                            <span className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground">
                               {t.blurb}
                             </span>
-                            {t.needs && (
-                              <span className="mt-0.5 inline-block max-w-full truncate rounded bg-amber-500/10 px-1 py-px text-[9px] text-amber-300 ring-1 ring-inset ring-amber-500/30">
-                                {CLIENT_TOOL_NEEDS_HINTS[t.needs]}
-                              </span>
-                            )}
                           </span>
                         </Link>
                       </li>
@@ -124,10 +167,19 @@ export function ClientToolsSidebar({
                   })}
                 </ul>
               )}
-            </div>
+            </section>
           );
         })}
       </div>
+
+      <p className="mt-4 px-1 text-[10px] text-muted-foreground/70">
+        <Link
+          href="/tools"
+          className="hover:text-foreground hover:underline"
+        >
+          Browse all tools →
+        </Link>
+      </p>
     </>
   );
 
@@ -149,11 +201,12 @@ export function ClientToolsSidebar({
             onClick={() => setMobileOpen(false)}
           >
             <div
-              className="absolute right-0 top-0 h-full w-80 max-w-[85vw] overflow-y-auto border-l border-white/10 bg-card p-4"
+              className="absolute right-0 top-0 h-full w-[320px] max-w-[85vw] overflow-y-auto border-l border-white/10 bg-card p-3"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-semibold">
+              <div className="mb-3 flex items-center justify-between px-1">
+                <h3 className="flex items-center gap-2 text-sm font-semibold">
+                  <Wrench className="size-4 text-violet-300" />
                   Tools for this client
                 </h3>
                 <button
@@ -171,19 +224,76 @@ export function ClientToolsSidebar({
       </div>
 
       {/* Desktop: sticky secondary sidebar */}
-      <aside className="sticky top-4 hidden h-[calc(100vh-2rem)] w-64 shrink-0 overflow-y-auto rounded-2xl border border-white/5 bg-card/40 p-3 backdrop-blur-md md:block">
-        <header className="mb-3 px-1.5">
-          <h3 className="flex items-center gap-1.5 text-sm font-semibold">
-            <Wrench className="size-3.5 text-violet-300" />
-            Tools for this client
-          </h3>
-          <p className="mt-0.5 text-[10px] text-muted-foreground">
-            {toolCount} tools · pre-wired with this client&apos;s URL +
-            connected accounts
-          </p>
+      <aside className="sticky top-4 hidden h-[calc(100vh-2rem)] w-[280px] shrink-0 overflow-hidden rounded-2xl border border-white/[0.06] bg-card/60 backdrop-blur-md md:flex md:flex-col">
+        <header className="border-b border-white/[0.06] bg-gradient-to-br from-violet-500/[0.06] to-cyan-500/[0.04] px-4 py-3">
+          <div className="flex items-center gap-2">
+            <span className="grid size-7 place-items-center rounded-md bg-violet-500/15 ring-1 ring-inset ring-violet-500/30">
+              <Wrench className="size-3.5 text-violet-300" />
+            </span>
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold leading-tight">
+                Tools for this client
+              </h3>
+              <p className="mt-0.5 text-[10px] leading-tight text-muted-foreground">
+                {toolCount} tools · pre-wired with this client&apos;s URL +
+                accounts
+              </p>
+            </div>
+          </div>
         </header>
-        {list}
+        <div className="flex-1 overflow-y-auto px-3 py-3">{list}</div>
       </aside>
     </>
   );
 }
+
+/**
+ * Color rotation for group accents. 7 colors cycle through the ~8 groups
+ * — enough variation to scan visually without overwhelming. Each entry
+ * is pre-baked Tailwind so the JIT picks it up (dynamic class names
+ * would silently fail).
+ */
+const GROUP_ACCENTS = [
+  {
+    dot: "bg-violet-400",
+    iconBg: "bg-violet-500/10 ring-violet-500/20",
+    icon: "text-violet-300",
+    hoverText: "group-hover:text-violet-200",
+  },
+  {
+    dot: "bg-cyan-400",
+    iconBg: "bg-cyan-500/10 ring-cyan-500/20",
+    icon: "text-cyan-300",
+    hoverText: "group-hover:text-cyan-200",
+  },
+  {
+    dot: "bg-emerald-400",
+    iconBg: "bg-emerald-500/10 ring-emerald-500/20",
+    icon: "text-emerald-300",
+    hoverText: "group-hover:text-emerald-200",
+  },
+  {
+    dot: "bg-rose-400",
+    iconBg: "bg-rose-500/10 ring-rose-500/20",
+    icon: "text-rose-300",
+    hoverText: "group-hover:text-rose-200",
+  },
+  {
+    dot: "bg-amber-400",
+    iconBg: "bg-amber-500/10 ring-amber-500/20",
+    icon: "text-amber-300",
+    hoverText: "group-hover:text-amber-200",
+  },
+  {
+    dot: "bg-sky-400",
+    iconBg: "bg-sky-500/10 ring-sky-500/20",
+    icon: "text-sky-300",
+    hoverText: "group-hover:text-sky-200",
+  },
+  {
+    dot: "bg-fuchsia-400",
+    iconBg: "bg-fuchsia-500/10 ring-fuchsia-500/20",
+    icon: "text-fuchsia-300",
+    hoverText: "group-hover:text-fuchsia-200",
+  },
+] as const;
