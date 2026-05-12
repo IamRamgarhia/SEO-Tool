@@ -187,6 +187,32 @@ export default async function ClientDetailPage({
     .from(keywords)
     .where(eq(keywords.clientId, clientId));
 
+  // Last ~8 snapshots, oldest-first, feed the StatCard sparklines.
+  // criticalIssues + highIssues are summed for the issues spark; the
+  // keywordCount column is reused directly. Open-task sparklines are
+  // skipped here because the snapshot table doesn't track them — the
+  // hint copy carries that read instead.
+  const recentSnapshots = await db
+    .select({
+      criticalIssues: clientMetricSnapshots.criticalIssues,
+      highIssues: clientMetricSnapshots.highIssues,
+      keywordCount: clientMetricSnapshots.keywordCount,
+      capturedAt: clientMetricSnapshots.capturedAt,
+    })
+    .from(clientMetricSnapshots)
+    .where(eq(clientMetricSnapshots.clientId, clientId))
+    .orderBy(desc(clientMetricSnapshots.capturedAt))
+    .limit(8);
+  const orderedSnapshots = recentSnapshots.slice().reverse();
+  const issuesSpark = orderedSnapshots
+    .map(
+      (s) =>
+        (s.criticalIssues ?? 0) + (s.highIssues ?? 0),
+    );
+  const keywordsSpark = orderedSnapshots
+    .map((s) => s.keywordCount)
+    .filter((v): v is number => v !== null);
+
   // Counts shown in the delete-confirmation dialog so the user sees
   // exactly what they're about to wipe.
   const clientAuditIds = (
@@ -702,29 +728,63 @@ export default async function ClientDetailPage({
 
       {/* STATS — or inviting empty-state when this client has no data yet */}
       {latestCompleted || keywordCount > 0 || openTaskCount > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-3">
-          <StatCard
-            label="Open issues"
-            value={latestCompleted?.issuesCount ?? 0}
-            accent="amber"
-            icon={AlertCircle}
-            hint="From last audit"
-          />
-          <StatCard
-            label="Open tasks"
-            value={openTaskCount}
-            accent="violet"
-            icon={ClipboardList}
-            hint="Auto-generated + manual"
-          />
-          <StatCard
-            label="Tracked keywords"
-            value={keywordCount}
-            accent="cyan"
-            icon={Search}
-            hint={keywordCount === 0 ? "Not tracking any yet" : "In rotation"}
-          />
-        </div>
+        (() => {
+          // Snapshot-driven deltas. We compare the latest snapshot's
+          // value to the snapshot from ~7 days ago (or the oldest we
+          // have if there aren't enough). Only shown when both ends
+          // exist so we don't fabricate movement.
+          const lastIdx = orderedSnapshots.length - 1;
+          const baseIdx = Math.max(0, lastIdx - 6);
+          const issuesDelta =
+            lastIdx > baseIdx && issuesSpark.length >= 2
+              ? issuesSpark[issuesSpark.length - 1] - issuesSpark[baseIdx]
+              : null;
+          const kwDelta =
+            lastIdx > baseIdx && keywordsSpark.length >= 2
+              ? keywordsSpark[keywordsSpark.length - 1] -
+                keywordsSpark[baseIdx]
+              : null;
+
+          return (
+            <div className="grid gap-4 sm:grid-cols-3">
+              <StatCard
+                label="Open issues"
+                value={latestCompleted?.issuesCount ?? 0}
+                accent="amber"
+                icon={AlertCircle}
+                hint="From last audit"
+                spark={issuesSpark.length >= 2 ? issuesSpark : undefined}
+                delta={
+                  issuesDelta !== null
+                    ? { value: issuesDelta, label: "vs prior" }
+                    : undefined
+                }
+              />
+              <StatCard
+                label="Open tasks"
+                value={openTaskCount}
+                accent="violet"
+                icon={ClipboardList}
+                hint="Auto-generated + manual"
+              />
+              <StatCard
+                label="Tracked keywords"
+                value={keywordCount}
+                accent="cyan"
+                icon={Search}
+                hint={
+                  keywordCount === 0 ? "Not tracking any yet" : "In rotation"
+                }
+                spark={keywordsSpark.length >= 2 ? keywordsSpark : undefined}
+                delta={
+                  kwDelta !== null
+                    ? { value: kwDelta, label: "vs prior" }
+                    : undefined
+                }
+              />
+            </div>
+          );
+        })()
       ) : (
         <section className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-cyan-500/[0.04] via-violet-500/[0.03] to-transparent p-6">
           <div className="pointer-events-none absolute -right-10 -top-10 size-40 rounded-full bg-cyan-500/10 blur-3xl" />
