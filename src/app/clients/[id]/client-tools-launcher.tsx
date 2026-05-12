@@ -162,6 +162,33 @@ function buildGroups(client: {
           blurb: "Split GSC traffic to see real organic growth.",
           needs: client.gscProperty ? null : "gsc",
         },
+        {
+          href: `/tools/serp-volatility`,
+          title: "SERP volatility tracker",
+          icon: Activity,
+          blurb:
+            "Day-over-day position shifts across tracked keywords — spot algorithm updates.",
+        },
+        {
+          href: `/tools/cannibalization`,
+          title: "Keyword cannibalization",
+          icon: AlertTriangle,
+          blurb: "Find queries where multiple pages compete and hurt each other.",
+          needs: client.gscProperty ? null : "gsc",
+        },
+      ],
+    },
+    {
+      label: "Paid ads & growth",
+      blurb: "Multi-platform paid-ads strategy + copy generator.",
+      tools: [
+        {
+          href: `/tools/ads-funnel?clientId=${id}`,
+          title: "Ad Funnel Architect ⭐",
+          icon: Sparkles,
+          blurb:
+            "Meta / Google / LinkedIn / TikTok / YouTube — copy, image prompts, keywords, funnel + budget split.",
+        },
       ],
     },
     {
