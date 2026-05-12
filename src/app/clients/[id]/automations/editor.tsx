@@ -1,8 +1,7 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
 import {
-  AlertCircle,
   Calendar,
   ChevronDown,
   ChevronUp,
@@ -90,42 +89,76 @@ function formatCadence(days: number): string {
   return `every ${days} days`;
 }
 
+type Destination = "local" | "wordpress" | "gbp";
+
 export function SchedulesEditor({
   clientId,
-  clientName,
   wpConnected,
   gbpUrl,
   schedules,
 }: {
   clientId: number;
-  clientName: string;
+  /** Reserved for future per-client title context; kept on the type for parity with the page. */
+  clientName?: string;
   wpConnected: boolean;
   gbpUrl: string | null;
   schedules: DailySchedule[];
 }) {
   const [showForm, setShowForm] = useState(schedules.length === 0);
   const [selectedKind, setSelectedKind] = useState<Kind>("blog_draft");
+  const [selectedDestination, setSelectedDestination] =
+    useState<Destination>("local");
   const [state, formAction, pending] = useActionState<
     CreateScheduleState,
     FormData
   >(createSchedule, null);
 
+  // What destinations are valid for the selected kind? Social + checklist
+  // are local-only by design.
+  const allowedDestinations: Destination[] =
+    selectedKind === "blog_draft"
+      ? ["local", "wordpress"]
+      : selectedKind === "gbp_post"
+        ? ["local", "gbp"]
+        : ["local"];
+
+  // If the user switches to a kind where the current destination is no
+  // longer valid, snap back to local.
+  useEffect(() => {
+    if (!allowedDestinations.includes(selectedDestination)) {
+      setSelectedDestination("local");
+    }
+    // allowedDestinations is a fresh array per render; depending on
+    // selectedKind is what we actually mean here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedKind]);
+
   return (
     <div className="space-y-5">
-      {/* Pre-flight notes */}
-      <div className="space-y-1.5 text-xs">
-        {!wpConnected && (
-          <Note
-            tone="amber"
-            text="WordPress isn't connected for this client — blog_draft schedules will generate but can't auto-publish until you wire up the bridge under the WordPress section on the client page."
-          />
-        )}
-        {!gbpUrl && (
-          <Note
-            tone="amber"
-            text="No GBP URL on this client. GBP schedules will need a location name (accounts/X/locations/Y) entered in the schedule config."
-          />
-        )}
+      {/* Connection status — informational, not blocking */}
+      <div className="glass-apple relative overflow-hidden rounded-2xl px-4 py-3 text-xs">
+        <p className="font-medium">Where your drafts can go:</p>
+        <ul className="mt-1.5 space-y-0.5 text-muted-foreground">
+          <li>
+            <span className="text-emerald-300">●</span> Save in this tool — always
+            available, no setup
+          </li>
+          <li>
+            <span
+              className={wpConnected ? "text-violet-300" : "text-muted-foreground/50"}
+            >
+              ●
+            </span>{" "}
+            WordPress — {wpConnected ? "connected for this client" : "not connected (set up the WP bridge below to enable)"}
+          </li>
+          <li>
+            <span className={gbpUrl ? "text-cyan-300" : "text-muted-foreground/50"}>●</span>{" "}
+            Google Business Profile —{" "}
+            {gbpUrl
+              ? "available; enter the location name on the GBP schedule"
+              : "no GBP URL on this client yet"}
+          </li>
+        </ul>
       </div>
 
       {/* Existing schedules */}
@@ -196,6 +229,56 @@ export function SchedulesEditor({
             </div>
           </div>
 
+          {/* Destination */}
+          <div>
+            <label className="text-sm font-semibold">
+              Where should approved items go?
+            </label>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              Local = stays in the review queue for you to copy/paste. No
+              connection needed.
+            </p>
+            <input
+              type="hidden"
+              name="destination"
+              value={selectedDestination}
+            />
+            <div className="mt-2 grid gap-2 sm:grid-cols-3">
+              <DestinationRadio
+                value="local"
+                title="Save in this tool"
+                description="Draft lives in the queue. Copy to clipboard or download as Markdown / HTML."
+                active={selectedDestination === "local"}
+                disabled={false}
+                onClick={() => setSelectedDestination("local")}
+              />
+              {allowedDestinations.includes("wordpress") && (
+                <DestinationRadio
+                  value="wordpress"
+                  title="Publish to WordPress"
+                  description={
+                    wpConnected
+                      ? "Auto-creates a post via the SEO Tool Bridge plugin."
+                      : "Requires the WP bridge — set it up under the WordPress section below."
+                  }
+                  active={selectedDestination === "wordpress"}
+                  disabled={!wpConnected}
+                  onClick={() => wpConnected && setSelectedDestination("wordpress")}
+                />
+              )}
+              {allowedDestinations.includes("gbp") && (
+                <DestinationRadio
+                  value="gbp"
+                  title="Publish to GBP"
+                  description="Auto-posts via the Google Business Profile API. Location name required below."
+                  active={selectedDestination === "gbp"}
+                  disabled={false}
+                  onClick={() => setSelectedDestination("gbp")}
+                />
+              )}
+            </div>
+          </div>
+
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="space-y-1 text-xs">
               <span className="text-muted-foreground">Cadence</span>
@@ -254,7 +337,7 @@ export function SchedulesEditor({
             />
           </label>
 
-          {selectedKind === "gbp_post" && (
+          {selectedKind === "gbp_post" && selectedDestination === "gbp" && (
             <>
               <label className="space-y-1 text-xs">
                 <span className="text-muted-foreground">
@@ -286,22 +369,24 @@ export function SchedulesEditor({
             </>
           )}
 
-          <label className="flex items-start gap-2 text-xs">
-            <input
-              type="checkbox"
-              name="autoPublish"
-              className="mt-0.5 size-4 rounded border-white/20 bg-card/60"
-            />
-            <span>
-              <span className="block font-medium">Auto-publish</span>
-              <span className="block text-[10px] text-muted-foreground">
-                Skip the review queue and publish directly each run. Keep
-                this OFF until you trust the prompts.
-                {selectedKind === "blog_draft" &&
-                  " (When OFF, posts land as WP drafts; when ON, as published.)"}
+          {selectedDestination !== "local" && (
+            <label className="flex items-start gap-2 text-xs">
+              <input
+                type="checkbox"
+                name="autoPublish"
+                className="mt-0.5 size-4 rounded border-white/20 bg-card/60"
+              />
+              <span>
+                <span className="block font-medium">Auto-publish</span>
+                <span className="block text-[10px] text-muted-foreground">
+                  Skip the review queue and publish directly each run. Keep
+                  this OFF until you trust the prompts.
+                  {selectedKind === "blog_draft" &&
+                    " (When OFF, posts land as WP drafts; when ON, as published.)"}
+                </span>
               </span>
-            </span>
-          </label>
+            </label>
+          )}
 
           {state && !state.ok && (
             <p className="rounded-md bg-rose-500/10 px-3 py-2 text-xs text-rose-300 ring-1 ring-inset ring-rose-500/30">
@@ -499,15 +584,41 @@ function ScheduleRow({
   );
 }
 
-function Note({ tone, text }: { tone: "amber" | "rose"; text: string }) {
-  const cls =
-    tone === "amber"
-      ? "bg-amber-500/10 text-amber-300 ring-amber-500/30"
-      : "bg-rose-500/10 text-rose-300 ring-rose-500/30";
+function DestinationRadio({
+  value,
+  title,
+  description,
+  active,
+  disabled,
+  onClick,
+}: {
+  value: Destination;
+  title: string;
+  description: string;
+  active: boolean;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  const tone =
+    value === "local"
+      ? "border-emerald-500/40 bg-emerald-500/[0.04]"
+      : value === "wordpress"
+        ? "border-violet-500/40 bg-violet-500/[0.04]"
+        : "border-cyan-500/40 bg-cyan-500/[0.04]";
   return (
-    <div className={`flex items-start gap-2 rounded-md px-3 py-2 ring-1 ring-inset ${cls}`}>
-      <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
-      <span>{text}</span>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+        active
+          ? tone
+          : "border-white/10 hover:bg-white/[0.03]"
+      }`}
+    >
+      <span className="text-sm font-medium">{title}</span>
+      <span className="text-[11px] text-muted-foreground">{description}</span>
+    </button>
   );
 }
+

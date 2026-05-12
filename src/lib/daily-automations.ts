@@ -11,18 +11,25 @@
  * them. Nothing here runs more often than that.
  */
 
-import { and, asc, eq, lte, or, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lte, or, isNull } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   clients,
   dailySchedules,
+  keywords,
+  keywordRankings,
   publishQueue,
   tasks,
+  type Client,
   type DailySchedule,
   type PublishQueueItem,
 } from "@/db/schema";
 import { callAI } from "./ai-call";
 import { logActivity } from "./activity";
+import {
+  retrieveKnowledge,
+  renderKnowledgeContext,
+} from "./seo-knowledge-base";
 
 const KIND_LABEL = {
   blog_draft: "Blog draft",
@@ -127,6 +134,83 @@ type GeneratedItem = {
   payload?: Record<string, unknown>;
 };
 
+/**
+ * Build a rich context block from everything we know about the client.
+ * The same prompt-injection pattern as /seo-chat — but tuned for content
+ * generation: niche, tech stack, top GSC queries (when persisted),
+ * recent striking-distance keywords, and the knowledge corpus chunk
+ * matched against the topic seed.
+ *
+ * The output is plain text suitable for appending to the AI system
+ * prompt. Empty if nothing's known.
+ */
+async function buildClientContext(opts: {
+  client: Client;
+  topicSeed: string;
+}): Promise<string> {
+  const { client, topicSeed } = opts;
+  const lines: string[] = [];
+
+  lines.push(`[Client context]`);
+  lines.push(`- Name: ${client.name}`);
+  lines.push(`- Site: ${client.url}`);
+  if (client.niche) lines.push(`- Niche: ${client.niche}`);
+  if (client.techStack && client.techStack.length > 0) {
+    lines.push(`- Tech stack: ${client.techStack.join(", ")}`);
+  }
+
+  // Recent striking-distance keywords from the rank tracker — these are
+  // queries the client is close to ranking for. Mentioning them in new
+  // content is a high-value internal-linking + topical-authority signal.
+  try {
+    const recent = await db
+      .select({
+        query: keywords.query,
+        position: keywordRankings.position,
+      })
+      .from(keywordRankings)
+      .innerJoin(keywords, eq(keywords.id, keywordRankings.keywordId))
+      .where(
+        and(
+          eq(keywords.clientId, client.id),
+          gte(
+            keywordRankings.checkedAt,
+            new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+          ),
+        ),
+      )
+      .orderBy(desc(keywordRankings.checkedAt))
+      .limit(50);
+    const strikingDistance = recent
+      .filter((r) => r.position !== null && r.position >= 4 && r.position <= 20)
+      .slice(0, 8)
+      .map((r) => `${r.query} (#${r.position})`);
+    if (strikingDistance.length > 0) {
+      lines.push(
+        `- Striking-distance queries (use 1-2 in the content if they fit naturally): ${strikingDistance.join("; ")}`,
+      );
+    }
+  } catch {
+    // Best-effort — never let context lookup fail the generation
+  }
+
+  // Inject knowledge-base chunks matched against the topic. Same
+  // pattern as /seo-chat — token-efficient RAG.
+  try {
+    const matched = retrieveKnowledge(`${client.niche ?? ""} ${topicSeed}`, 2);
+    const ctx = renderKnowledgeContext(matched, 2000);
+    if (ctx) {
+      lines.push(``);
+      lines.push(`[Internal knowledge — weave these facts in, don't quote verbatim]`);
+      lines.push(ctx);
+    }
+  } catch {
+    // Best-effort
+  }
+
+  return lines.join("\n");
+}
+
 async function generateForSchedule(
   s: DailySchedule,
 ): Promise<GeneratedItem | null> {
@@ -140,67 +224,73 @@ async function generateForSchedule(
   const cfg = (s.configJson ?? {}) as Record<string, unknown>;
   const topicSeed = String(cfg.topic_seed ?? client.niche ?? "SEO");
   const tone = String(cfg.tone ?? "professional, plain English");
+  const context = await buildClientContext({ client, topicSeed });
 
   if (s.kind === "blog_draft") {
-    return generateBlogDraft({
-      clientName: client.name,
-      clientUrl: client.url,
-      niche: client.niche ?? null,
-      topicSeed,
-      tone,
-    });
+    return generateBlogDraft({ client, topicSeed, tone, context });
   }
   if (s.kind === "gbp_post") {
     return generateGbpPost({
-      clientName: client.name,
+      client,
       topicSeed,
       tone,
+      context,
       postType: String(cfg.post_type ?? "STANDARD"),
     });
   }
   if (s.kind === "social_post") {
-    return generateSocialPost({
-      clientName: client.name,
-      clientUrl: client.url,
-      topicSeed,
-      tone,
-    });
+    return generateSocialPost({ client, topicSeed, tone, context });
   }
   if (s.kind === "internal_checklist") {
-    return generateChecklist({
-      clientId: s.clientId,
-      niche: client.niche ?? null,
-    });
+    return generateChecklist({ client, context });
   }
   return null;
 }
 
 async function generateBlogDraft(opts: {
-  clientName: string;
-  clientUrl: string;
-  niche: string | null;
+  client: Client;
   topicSeed: string;
   tone: string;
+  context: string;
 }): Promise<GeneratedItem | null> {
-  const system = `You are an expert SEO content writer. Write a single complete blog post in HTML for ${opts.clientName} (${opts.clientUrl}). Tone: ${opts.tone}. 800-1200 words. Include 3-5 H2 subheadings, a 50-word intro, an opening tl;dr summary, and a closing one-paragraph conclusion. Use <p>, <h2>, <ul>, <ol>, <strong>. Never include <html>, <body>, <h1>, or <style> tags — the H1 comes from the title field and styling is handled by the WP theme.`;
-  const user = `Topic seed: "${opts.topicSeed}"${opts.niche ? ` (niche: ${opts.niche})` : ""}.
+  const system = `You are an expert SEO content writer working on a real blog for ${opts.client.name} (${opts.client.url}).
 
-Pick a specific, useful angle the audience would actually search for. Output strict JSON:
+Write ONE complete blog post in HTML. 800-1200 words. Structure:
+- Opening tl;dr (1-2 sentences, no header)
+- 50-word intro paragraph that frames the problem
+- 3-5 H2 subheadings, each followed by 2-4 paragraphs / a list when it helps
+- Closing paragraph with a clear next step
+- Use <p>, <h2>, <ul>, <ol>, <strong>, <em>, <blockquote>, <code>
+- NEVER include <html>, <body>, <h1>, <head>, or <style> tags — the H1 comes from the title field and styling is the WP theme's job
+- NEVER hallucinate specific statistics, customer names, or product features. Stay grounded in what's plausible for the niche.
+- Tone: ${opts.tone}
+
+The post should be the kind a smart human editor would publish without rewriting it — specific examples, real-world phrasing, no "in today's fast-paced world" filler.`;
+
+  const user = `${opts.context}
+
+[Today's brief]
+Topic seed: "${opts.topicSeed}"
+
+Pick a specific, useful angle the audience would actually search for. Don't write a generic listicle — pick a real question and answer it well.
+
+Output strict JSON only — no markdown fences, no preamble:
 
 {
-  "title": "60-char post title",
-  "metaDescription": "150-char SEO description",
-  "excerpt": "1-sentence WP excerpt (≤180 chars)",
-  "contentHtml": "the full body as HTML"
+  "title": "55-65 char post title that would earn a click in SERP",
+  "metaDescription": "140-160 char SEO description that summarizes the answer",
+  "excerpt": "1-sentence WP excerpt (≤180 chars) — the social-share teaser",
+  "contentHtml": "the full body as HTML, no <html>/<body>/<h1>"
 }`;
   const raw = await callAI({
     system,
     user,
-    maxTokens: 2500,
+    maxTokens: 3500,
     temperature: 0.7,
-    timeoutMs: 90_000,
+    timeoutMs: 120_000,
     ignoreCreditSaver: true,
     feature: "blog_draft",
+    clientId: opts.client.id,
   });
   if (!raw) return null;
   const parsed = extractJson(raw) as {
@@ -221,25 +311,40 @@ Pick a specific, useful angle the audience would actually search for. Output str
 }
 
 async function generateGbpPost(opts: {
-  clientName: string;
+  client: Client;
   topicSeed: string;
   tone: string;
+  context: string;
   postType: string;
 }): Promise<GeneratedItem | null> {
-  const system = `You write Google Business Profile posts for local businesses. Output ≤ 1300 characters (Google caps at 1500; leave room). Be specific and benefit-led. No emoji spam. No exclamation marks back-to-back. End with a clear next step.`;
-  const user = `Business: ${opts.clientName}
-Tone: ${opts.tone}
-Topic / seed: ${opts.topicSeed}
+  const system = `You write Google Business Profile posts for local businesses. Constraints:
+- ≤ 1300 characters (Google caps at 1500; leave room)
+- Lead with the benefit, not a greeting
+- Specific over generic — name a service, a season, a price range, an actual menu item
+- No emoji spam (1 emoji max, only if it adds clarity)
+- No "we are excited to" / "we are thrilled to" filler
+- End with a single clear next step
+- Tone: ${opts.tone}`;
+  const user = `${opts.context}
+
+[Today's brief]
+Topic seed: "${opts.topicSeed}"
 Post type: ${opts.postType}
 
-Output strict JSON: { "summary": "the post text", "callToAction": "BOOK"|"ORDER"|"SHOP"|"LEARN_MORE"|"SIGN_UP"|"CALL"|null }`;
+Pick the most timely angle for this business. Output strict JSON only — no markdown fences:
+
+{
+  "summary": "the post text, ≤1300 chars",
+  "callToAction": "BOOK"|"ORDER"|"SHOP"|"LEARN_MORE"|"SIGN_UP"|"CALL"|null
+}`;
   const raw = await callAI({
     system,
     user,
-    maxTokens: 600,
+    maxTokens: 800,
     temperature: 0.6,
     timeoutMs: 60_000,
     feature: "general",
+    clientId: opts.client.id,
   });
   if (!raw) return null;
   const parsed = extractJson(raw) as {
@@ -250,30 +355,40 @@ Output strict JSON: { "summary": "the post text", "callToAction": "BOOK"|"ORDER"
   return {
     title: parsed.summary.slice(0, 80),
     body: parsed.summary.slice(0, 1300),
-    payload: { callToAction: parsed.callToAction ?? null, postType: opts.postType },
+    payload: {
+      callToAction: parsed.callToAction ?? null,
+      postType: opts.postType,
+    },
   };
 }
 
 async function generateSocialPost(opts: {
-  clientName: string;
-  clientUrl: string;
+  client: Client;
   topicSeed: string;
   tone: string;
+  context: string;
 }): Promise<GeneratedItem | null> {
-  const system = `You write short-form social posts (X/Twitter + LinkedIn) for businesses. Make each platform variant distinct — X is 1-2 punchy lines, LinkedIn is a 3-5 line micro-essay.`;
-  const user = `Business: ${opts.clientName}
-URL: ${opts.clientUrl}
-Tone: ${opts.tone}
-Topic / seed: ${opts.topicSeed}
+  const system = `You write short-form social posts. Make each platform variant distinct:
+- X / Twitter: 1-2 punchy lines, hook → payoff, ≤270 chars
+- LinkedIn: 3-5 line micro-essay with a real insight, ≤700 chars
+- No emoji spam, no hashtag walls (LinkedIn: max 3 hashtags at the end; X: 0-1)
+- Tone: ${opts.tone}`;
+  const user = `${opts.context}
 
-Output strict JSON: { "x": "X post ≤270 chars", "linkedin": "LinkedIn post ≤700 chars" }`;
+[Today's brief]
+Topic seed: "${opts.topicSeed}"
+
+Output strict JSON only — no markdown fences:
+
+{ "x": "X post ≤270 chars", "linkedin": "LinkedIn post ≤700 chars" }`;
   const raw = await callAI({
     system,
     user,
-    maxTokens: 600,
+    maxTokens: 800,
     temperature: 0.7,
     timeoutMs: 60_000,
     feature: "general",
+    clientId: opts.client.id,
   });
   if (!raw) return null;
   const parsed = extractJson(raw) as {
@@ -294,18 +409,29 @@ Output strict JSON: { "x": "X post ≤270 chars", "linkedin": "LinkedIn post ≤
 }
 
 async function generateChecklist(opts: {
-  clientId: number;
-  niche: string | null;
+  client: Client;
+  context: string;
 }): Promise<GeneratedItem | null> {
-  const system = `You are an SEO project manager. Output today's daily checklist for a ${opts.niche ?? "general"} business. Be specific and actionable — never generic SEO advice. 5 items max.`;
-  const user = `Output strict JSON: { "items": [{ "title": "≤80 chars", "why": "1 sentence" }, ...] } — 3 to 5 items.`;
+  const system = `You are an SEO project manager generating today's actionable checklist for ${opts.client.name}.
+
+Rules:
+- Each item should be doable in 15-60 minutes
+- Reference the client's actual context (their niche, their stack) — never generic "do SEO" advice
+- Tie each item to a measurable outcome where possible
+- 3-5 items max, ordered by impact`;
+  const user = `${opts.context}
+
+Output strict JSON only — no markdown fences:
+
+{ "items": [{ "title": "≤80 chars action", "why": "1-sentence rationale tied to this client" }, ...] }`;
   const raw = await callAI({
     system,
     user,
-    maxTokens: 600,
+    maxTokens: 800,
     temperature: 0.5,
     timeoutMs: 45_000,
     feature: "general",
+    clientId: opts.client.id,
   });
   if (!raw) return null;
   const parsed = extractJson(raw) as {
@@ -407,6 +533,24 @@ export async function tickQueuePublish(): Promise<{
 async function publishOne(
   item: PublishQueueItem,
 ): Promise<{ ok: true; ref?: string } | { ok: false; error: string }> {
+  // Honor the schedule's destination. "local" means the user explicitly
+  // opted out of any external integration — the item is theirs to copy
+  // out of the queue. We don't error on it; we mark it as published
+  // with a sentinel ref so the queue UI shows it's "ready to copy".
+  let destination: string = "auto";
+  if (item.scheduleId) {
+    const [s] = await db
+      .select()
+      .from(dailySchedules)
+      .where(eq(dailySchedules.id, item.scheduleId))
+      .limit(1);
+    const cfg = (s?.configJson ?? {}) as Record<string, unknown>;
+    if (typeof cfg.destination === "string") destination = cfg.destination;
+  }
+  if (destination === "local") {
+    return { ok: true, ref: "local:draft" };
+  }
+
   if (item.kind === "blog_draft") {
     return publishBlog(item);
   }
@@ -416,7 +560,11 @@ async function publishOne(
   if (item.kind === "social_post") {
     // No auto-OAuth path in v1. Approved social items stay approved as
     // a manual handoff; the queue page surfaces copy-to-clipboard.
-    return { ok: false, error: "Social auto-post not configured — copy manually from queue." };
+    return {
+      ok: false,
+      error:
+        "Social auto-post not configured. Set destination to 'local' on the schedule to silence this and use copy/paste.",
+    };
   }
   if (item.kind === "internal_checklist") {
     return publishChecklist(item);

@@ -18,11 +18,23 @@ export async function createSchedule(
   const kind = String(formData.get("kind") ?? "");
   const cadenceDays = Math.max(1, Math.min(90, Number(formData.get("cadenceDays") ?? 1)));
   const timeUtc = Math.max(0, Math.min(2359, Number(formData.get("timeUtc") ?? 900)));
-  const autoPublish = formData.get("autoPublish") === "on";
+  const autoPublishRaw = formData.get("autoPublish") === "on";
   const topicSeed = String(formData.get("topicSeed") ?? "").slice(0, 200);
   const tone = String(formData.get("tone") ?? "").slice(0, 200);
   const gbpLocationName = String(formData.get("gbpLocationName") ?? "").slice(0, 200);
   const postType = String(formData.get("postType") ?? "STANDARD");
+  // Where the approved item ultimately goes:
+  //   "local"     — save in the tool's queue; copy/paste yourself (no integration needed)
+  //   "wordpress" — publish via WP bridge plugin
+  //   "gbp"       — publish via Google Business Profile API
+  const destinationRaw = String(formData.get("destination") ?? "local");
+  const destination =
+    destinationRaw === "wordpress" || destinationRaw === "gbp"
+      ? destinationRaw
+      : "local";
+  // Local mode is never auto-publish (there's nothing to publish to);
+  // suppress the flag if the user toggled it on by mistake.
+  const autoPublish = destination === "local" ? false : autoPublishRaw;
 
   if (!Number.isFinite(clientId) || clientId <= 0) {
     return { ok: false, error: "Bad client." };
@@ -35,7 +47,7 @@ export async function createSchedule(
     return { ok: false, error: "Pick a kind." };
   }
 
-  const config: Record<string, unknown> = {};
+  const config: Record<string, unknown> = { destination };
   if (topicSeed) config.topic_seed = topicSeed;
   if (tone) config.tone = tone;
   if (kind === "gbp_post") {

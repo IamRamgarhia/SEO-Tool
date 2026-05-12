@@ -8,8 +8,10 @@ import {
   ChevronUp,
   Clock,
   Copy,
+  Download,
   Edit3,
   ExternalLink,
+  FileCode,
   FileText,
   Globe,
   Inbox,
@@ -210,6 +212,66 @@ function QueueRow({
     });
   }
 
+  function htmlToMarkdown(html: string): string {
+    // Tiny converter — handles the elements our blog-draft generator emits.
+    // Good enough for paste-into-Medium / paste-into-Notion / paste-into-WP
+    // visual editor. Anything weirder gets pasted as HTML using the Copy
+    // body button.
+    let md = html;
+    md = md.replace(/<\s*br\s*\/?\s*>/gi, "\n");
+    md = md.replace(/<\/?(strong|b)>/gi, "**");
+    md = md.replace(/<\/?(em|i)>/gi, "_");
+    md = md.replace(/<\/?code>/gi, "`");
+    md = md.replace(/<h2[^>]*>([\s\S]*?)<\/h2>/gi, "\n## $1\n");
+    md = md.replace(/<h3[^>]*>([\s\S]*?)<\/h3>/gi, "\n### $1\n");
+    md = md.replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, "$1\n\n");
+    md = md.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, "- $1\n");
+    md = md.replace(/<\/?(ul|ol|blockquote)[^>]*>/gi, "\n");
+    md = md.replace(
+      /<a\s+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi,
+      "[$2]($1)",
+    );
+    md = md.replace(/<[^>]+>/g, ""); // strip anything else
+    md = md.replace(/\n{3,}/g, "\n\n").trim();
+    return md;
+  }
+
+  function copyAsMarkdown() {
+    const title = item.title ? `# ${item.title}\n\n` : "";
+    navigator.clipboard
+      .writeText(title + htmlToMarkdown(item.body ?? ""))
+      .then(() => toast.success("Copied as Markdown."));
+  }
+
+  function downloadAs(format: "md" | "html") {
+    const title = item.title ?? "draft";
+    const filename = title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60);
+    let content: string;
+    let mime: string;
+    let ext: string;
+    if (format === "md") {
+      content = (item.title ? `# ${item.title}\n\n` : "") + htmlToMarkdown(item.body ?? "");
+      mime = "text/markdown";
+      ext = "md";
+    } else {
+      content = `<!doctype html><meta charset="utf-8"><title>${item.title ?? ""}</title>\n${item.title ? `<h1>${item.title}</h1>\n` : ""}${item.body ?? ""}`;
+      mime = "text/html";
+      ext = "html";
+    }
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${filename || "draft"}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Downloaded ${a.download}`);
+  }
+
   return (
     <li
       className={`glass-apple relative overflow-hidden rounded-2xl ${
@@ -363,10 +425,42 @@ function QueueRow({
               type="button"
               onClick={copyBody}
               className="inline-flex h-9 items-center rounded-md bg-white/5 px-3 text-xs ring-1 ring-inset ring-white/10 hover:bg-white/10"
+              title="Copy raw body to clipboard"
             >
               <Copy className="mr-1.5 size-3" />
-              Copy body
+              Copy
             </button>
+            {item.kind === "blog_draft" && (
+              <>
+                <button
+                  type="button"
+                  onClick={copyAsMarkdown}
+                  className="inline-flex h-9 items-center rounded-md bg-white/5 px-3 text-xs ring-1 ring-inset ring-white/10 hover:bg-white/10"
+                  title="Copy as Markdown (paste into Notion, Medium, ghost editor)"
+                >
+                  <FileCode className="mr-1.5 size-3" />
+                  Copy MD
+                </button>
+                <button
+                  type="button"
+                  onClick={() => downloadAs("md")}
+                  className="inline-flex h-9 items-center rounded-md bg-white/5 px-3 text-xs ring-1 ring-inset ring-white/10 hover:bg-white/10"
+                  title="Download as .md file"
+                >
+                  <Download className="mr-1.5 size-3" />
+                  .md
+                </button>
+                <button
+                  type="button"
+                  onClick={() => downloadAs("html")}
+                  className="inline-flex h-9 items-center rounded-md bg-white/5 px-3 text-xs ring-1 ring-inset ring-white/10 hover:bg-white/10"
+                  title="Download as .html file"
+                >
+                  <Download className="mr-1.5 size-3" />
+                  .html
+                </button>
+              </>
+            )}
             <button
               type="button"
               disabled={pending}
