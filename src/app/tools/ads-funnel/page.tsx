@@ -29,7 +29,7 @@ export default async function AdsFunnelToolPage({
     <div className="mx-auto max-w-5xl space-y-6">
       <PageHeader
         title="Ad Funnel Architect"
-        description="Multi-platform paid-ads strategy generator. Pick where you want to run ads, describe your business + offer, and get a complete launch-ready package: copy variants per platform, image-gen prompts, keyword bundles, funnel map, budget split, and tracking setup."
+        description="Multi-platform ad strategy + ready-to-paste copy."
         icon={Megaphone}
         accent="rose"
       />
