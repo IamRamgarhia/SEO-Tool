@@ -1,12 +1,16 @@
 import Link from "next/link";
 import {
+  ArrowRight,
+  Bot,
   Code2,
   Globe,
   Heart,
   Info,
   Keyboard,
+  Rocket,
   Scale,
   Sparkles,
+  Wrench,
 } from "lucide-react";
 import { PageHeader } from "@/components/shell/page-header";
 import { MaintainerCredit } from "@/components/shell/maintainer-credit";
@@ -139,7 +143,10 @@ export default function AboutPage() {
       </section>
 
       {/* License — plain-English summary of PolyForm Noncommercial 1.0.0 */}
-      <section className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.04] p-5 space-y-3 text-sm">
+      <section
+        id="license"
+        className="scroll-mt-20 rounded-2xl border border-amber-500/20 bg-amber-500/[0.04] p-5 space-y-3 text-sm"
+      >
         <h2 className="flex items-center gap-2 font-semibold">
           <Scale className="size-4 text-amber-300" />
           License — free to use, not free to sell
@@ -204,6 +211,90 @@ export default function AboutPage() {
         The <strong>Support the project</strong> button above opens the
         UPI ID + Buy Me A Coffee options.
       </p>
+
+      {/* Hire DiceCodes — services pitch. Distinct from the LICENSE
+          commercial-license clause (which is for reselling THIS tool).
+          This section is for "build NEW software FOR me". */}
+      <section className="relative overflow-hidden rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-500/[0.08] via-violet-500/[0.04] to-cyan-500/[0.06] p-5 space-y-3">
+        <div className="flex items-center gap-2">
+          <span className="grid size-8 place-items-center rounded-lg bg-violet-500/20 text-violet-200 ring-1 ring-inset ring-violet-400/40">
+            <Rocket className="size-4" />
+          </span>
+          <div>
+            <h2 className="text-sm font-semibold">
+              Building something? We can ship it for you.
+            </h2>
+            <p className="text-[11px] text-muted-foreground">
+              {MAINTAINER.name} builds custom software — solo, end-to-end.
+            </p>
+          </div>
+        </div>
+
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          This SEO platform — 150+ tools, daily AI agent, headless
+          browser pool, white-label reports — was built by one person.
+          If you have an idea like this for your business or startup,
+          we can build it.
+        </p>
+
+        <ul className="grid gap-1.5 text-[11px] text-foreground/85 sm:grid-cols-2">
+          <li className="flex items-start gap-1.5">
+            <Rocket className="mt-0.5 size-3 shrink-0 text-violet-300" />
+            <span>
+              <strong>Startup MVPs</strong> — idea → shipping product in
+              4-12 weeks
+            </span>
+          </li>
+          <li className="flex items-start gap-1.5">
+            <Bot className="mt-0.5 size-3 shrink-0 text-cyan-300" />
+            <span>
+              <strong>AI-powered apps</strong> — RAG, agents, automation
+              workflows
+            </span>
+          </li>
+          <li className="flex items-start gap-1.5">
+            <Wrench className="mt-0.5 size-3 shrink-0 text-emerald-300" />
+            <span>
+              <strong>Internal tools + dashboards</strong> for ops teams
+            </span>
+          </li>
+          <li className="flex items-start gap-1.5">
+            <Code2 className="mt-0.5 size-3 shrink-0 text-amber-300" />
+            <span>
+              <strong>SaaS platforms</strong> with billing, auth,
+              multi-tenancy
+            </span>
+          </li>
+        </ul>
+
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <a
+            href={`mailto:${MAINTAINER.contactEmail}?subject=Custom%20software%20enquiry`}
+            className="inline-flex h-9 items-center gap-1.5 rounded-md bg-violet-500/20 px-3 text-xs font-semibold text-violet-100 ring-1 ring-inset ring-violet-400/40 transition-colors hover:bg-violet-500/30"
+          >
+            Email {MAINTAINER.contactEmail}
+            <ArrowRight className="size-3" />
+          </a>
+          {MAINTAINER.website && (
+            <a
+              href={MAINTAINER.website}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="inline-flex h-9 items-center gap-1.5 rounded-md bg-white/[0.04] px-3 text-xs font-medium text-foreground/85 ring-1 ring-inset ring-white/10 transition-colors hover:bg-white/[0.08]"
+            >
+              <Globe className="size-3" />
+              See past work at dicecodes.com
+            </a>
+          )}
+        </div>
+
+        <p className="text-[10px] text-muted-foreground">
+          Note: this is separate from the SEO tool&apos;s license. If
+          you want to <strong>resell or paid-host this SEO tool</strong>,
+          that&apos;s a different (also welcome) conversation —{" "}
+          see <a href="#license" className="text-violet-300 hover:underline">License</a> above.
+        </p>
+      </section>
     </div>
   );
 }

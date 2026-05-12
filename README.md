@@ -405,6 +405,26 @@ If this tool saves you a ₹10,000+/month Ahrefs subscription, the cheapest way 
 
 <div align="center">
 
+## 🚀 Need custom software like this? We build it.
+
+**DiceCodes builds full-stack web apps end-to-end — solo, no agency overhead.**
+
+This entire SEO platform (150+ tools, AI daily agent, headless browser pool, white-label reports) was built by one person. If you have a startup idea, an internal tool you wish existed, or a SaaS product to launch — we can build it.
+
+| What we build | Typical timeline |
+|---|---|
+| 🚀 **Startup MVPs** — idea → shipping product | 4-12 weeks |
+| 🤖 **AI-powered apps** — RAG, agents, automation workflows | 4-8 weeks |
+| 🛠️ **Internal tools + dashboards** for ops teams | 2-6 weeks |
+| 💼 **SaaS platforms** with billing, auth, multi-tenancy | 8-16 weeks |
+
+📧 **Email [hello@dicecodes.com](mailto:hello@dicecodes.com)** to start your build  
+🌐 **See past work at [dicecodes.com](https://dicecodes.com)**
+
+> *Separate from the SEO tool's license — that conversation is about reselling THIS software. This is about building NEW software for your idea.*
+
+---
+
 ## Built by [DiceCodes](https://dicecodes.com)
 
 Solo-built. No VC. No growth team. Just one developer trying to make pro-grade SEO tooling permanently free for everyone.
