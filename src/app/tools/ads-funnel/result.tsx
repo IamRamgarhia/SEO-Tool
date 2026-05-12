@@ -16,8 +16,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AiDisclaimer } from "@/components/ai-disclaimer";
-import { STAGE_META, type AdsFunnelResult } from "./actions";
-import { findAdPlatform } from "@/lib/ads-skills";
+import { type AdsFunnelResult } from "./actions";
+import { findAdPlatform, FUNNEL_STAGE_META as STAGE_META } from "@/lib/ads-skills";
 
 const STAGE_COLOR: Record<keyof typeof STAGE_META, string> = {
   awareness: "border-violet-500/30 bg-violet-500/[0.04]",

@@ -10,7 +10,6 @@ import {
   findAdPlatform,
   renderAdSkillContext,
   NICHE_LABELS,
-  FUNNEL_STAGE_META,
   type AdPlatformId,
   type BusinessNiche,
   type FunnelStage,
@@ -475,5 +474,3 @@ function arrayOr(v: unknown): unknown[] {
   return Array.isArray(v) ? v : [];
 }
 
-// Surface stage metadata to the UI without forcing it to re-import the skill file
-export const STAGE_META = FUNNEL_STAGE_META;
