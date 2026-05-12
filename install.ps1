@@ -87,6 +87,23 @@ function Info($m) { Write-Host "i  $m" -ForegroundColor Cyan }
 function Warn($m) { Write-Host "!  $m" -ForegroundColor Yellow }
 function Die($m)  { Write-Host "X  $m" -ForegroundColor Red; Save-LogAndExit $true; exit 1 }
 
+# DieMulti — print multi-line error WITHOUT using PowerShell here-strings.
+# Here-strings (@"..."@) break under `iwr | iex` invocation in PS 5.1:
+# the close marker `"@` isn't recognized and the parser consumes everything
+# to EOF. Using an array of strings + Write-Host avoids that entire class.
+function DieMulti {
+    param([string[]]$Lines)
+    Write-Host ""
+    Write-Host "X  $(if ($Lines.Count -gt 0) { $Lines[0] } else { 'Fatal error' })" -ForegroundColor Red
+    if ($Lines.Count -gt 1) {
+        for ($i = 1; $i -lt $Lines.Count; $i++) {
+            Write-Host "   $($Lines[$i])" -ForegroundColor Red
+        }
+    }
+    Save-LogAndExit $true
+    exit 1
+}
+
 # Trap for unhandled errors - keeps the window open even when something
 # crashes unexpectedly (PowerShell parse errors, .NET exceptions, etc.)
 trap {
@@ -127,6 +144,35 @@ if (-not $extracted) { Die "ZIP didn't contain expected folder." }
 
 if (Test-Path $dir) {
     Say "Existing install found at $dir - refreshing in place (your data is preserved)"
+    # Stop any running dev server BEFORE we copy over its files. Otherwise
+    # the .next folder + node_modules have locked files (node.exe is holding
+    # them) and robocopy + future folder deletion both fail.
+    $oldPidFile = Join-Path $dir ".dev-server.pid"
+    if (Test-Path $oldPidFile) {
+        $oldPid = Get-Content $oldPidFile -ErrorAction SilentlyContinue
+        if ($oldPid) {
+            try {
+                Stop-Process -Id $oldPid -Force -ErrorAction SilentlyContinue
+                Say "  Stopped existing dev server (PID $oldPid)"
+            } catch {}
+        }
+    }
+    # Also clear anything still bound to the saved port - catches the case
+    # where the PID file is missing/stale but the server is still up.
+    $savedPortFile = Join-Path $dir ".seo-port"
+    if (Test-Path $savedPortFile) {
+        $savedPort = (Get-Content $savedPortFile -ErrorAction SilentlyContinue) -replace '\s', ''
+        if ($savedPort -match '^\d+$') {
+            try {
+                $boundConns = Get-NetTCPConnection -LocalPort ([int]$savedPort) -State Listen -ErrorAction SilentlyContinue
+                foreach ($c in $boundConns) {
+                    Stop-Process -Id $c.OwningProcess -Force -ErrorAction SilentlyContinue
+                    Say "  Freed port $savedPort (PID $($c.OwningProcess))"
+                }
+            } catch {}
+        }
+    }
+    Start-Sleep -Seconds 1   # let Windows release file locks
     # Copy files over, overwriting but NOT deleting things the ZIP doesn't have
     # (so user data like data.db stays).
     robocopy $extracted.FullName $dir /E /NFL /NDL /NJH /NJS /NC /NS /NP | Out-Null
@@ -216,68 +262,59 @@ else {
 
     # Check Node
     if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-        Die @"
-Node.js is required for the native install.
-
-Quickest install:
-  1. Open: https://nodejs.org/  (download LTS)
-  2. Run the installer (default options)
-  3. Re-run this command in a NEW PowerShell window
-
-Or, if you have winget (Windows 10+):
-  winget install OpenJS.NodeJS.LTS
-"@
+        DieMulti @(
+            "Node.js is required for the native install.",
+            "",
+            "Quickest install:",
+            "  winget install OpenJS.NodeJS.LTS",
+            "",
+            "Or download from https://nodejs.org/ (pick the LTS version).",
+            "",
+            "After installing, CLOSE this PowerShell window, open a NEW one,",
+            "and re-run this installer."
+        )
     }
 
     $nodeFullVersion = (node -v 2>$null) -replace '^v', ''
     $nodeMajor = [int]($nodeFullVersion -split '\.')[0]
 
     if ($nodeMajor -lt 20) {
-        Die @"
-Node $nodeFullVersion is too old. This installer needs Node 22 LTS.
-
-Quick fix (one command):
-  winget install OpenJS.NodeJS.LTS
-
-After that, CLOSE this PowerShell window, open a NEW one, and re-run
-this installer.
-"@
+        DieMulti @(
+            "Node $nodeFullVersion is too old. This installer needs Node 22 LTS.",
+            "",
+            "Quick fix (one command):",
+            "  winget install OpenJS.NodeJS.LTS",
+            "",
+            "After that, CLOSE this PowerShell window, open a NEW one,",
+            "and re-run this installer."
+        )
     }
 
     if ($nodeMajor -gt 22 -and $env:SEO_ALLOW_NEW_NODE -ne "1") {
-        Die @"
-Node $nodeFullVersion is too new (major version $nodeMajor).
-
-This app's dependencies (better-sqlite3, sharp, tesseract.js) don't yet
-ship prebuilt binaries for Node $nodeMajor. Trying to compile them from
-source requires installing a 3 GB C++ toolchain - and even then it
-often fails on cutting-edge Node versions.
-
-The reliable fix is to use Node 22 LTS (the current Long Term Support
-release, supported until April 2027). It has prebuilts for every native
-module we use - install completes in 2 minutes, zero C++ tools needed.
-
-ONE-COMMAND FIX (recommended):
-
-  1. Uninstall your current Node:
-     winget uninstall OpenJS.NodeJS
-
-  2. Install Node 22 LTS:
-     winget install OpenJS.NodeJS.LTS
-
-  3. CLOSE this PowerShell window, open a NEW one.
-
-  4. Re-run this installer.
-
-Alternatively, install nvm-windows and switch Node versions:
-  winget install CoreyButler.NVMforWindows
-  nvm install 22
-  nvm use 22
-
-Or, if you really want to use Node $nodeMajor and you've already
-installed Visual Studio Build Tools + Python: re-run with
-  `$env:SEO_ALLOW_NEW_NODE = "1"; <re-run command>`
-"@
+        DieMulti @(
+            "Node $nodeFullVersion is too new (major version $nodeMajor).",
+            "",
+            "This app's dependencies (better-sqlite3, sharp, tesseract.js) don't yet",
+            "ship prebuilt binaries for Node $nodeMajor. Trying to compile them from",
+            "source requires installing a 3 GB C++ toolchain - and even then it",
+            "often fails on cutting-edge Node versions.",
+            "",
+            "The reliable fix is to use Node 22 LTS (supported until April 2027).",
+            "It has prebuilts for every native module we use - install completes",
+            "in 2 minutes, zero C++ tools needed.",
+            "",
+            "ONE-COMMAND FIX:",
+            "  winget uninstall OpenJS.NodeJS",
+            "  winget install OpenJS.NodeJS.LTS",
+            "Then CLOSE this window, open a NEW PowerShell, re-run installer.",
+            "",
+            "OR install nvm-windows:",
+            "  winget install CoreyButler.NVMforWindows",
+            "  nvm install 22 ; nvm use 22",
+            "",
+            "Power-user escape (only if VS Build Tools + Python are already installed):",
+            '  $env:SEO_ALLOW_NEW_NODE = "1"; <then re-run installer>'
+        )
     }
 
     Say "Node $nodeFullVersion detected - supported."
@@ -430,29 +467,26 @@ installed Visual Studio Build Tools + Python: re-run with
         # - No C++ build toolchain (most common on Windows)
         # - Network blocking access to GitHub releases
         # - Node version with no prebuilt + no toolchain to compile
-        Die @"
-better-sqlite3 native module FAILED to build after 4 different attempts.
-
-Most likely cause: missing C++ build toolchain on Windows.
-
-QUICK FIX (recommended) - one command, ~3 GB download, ~10 min install:
-  winget install Microsoft.VisualStudio.2022.BuildTools --override "--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
-  winget install Python.Python.3.12
-
-Then re-run this installer.
-
-ALTERNATIVE - reinstall Node.js and check the "Tools for Native Modules"
-checkbox during setup (https://nodejs.org/). This auto-installs Python +
-VS Build Tools but adds 10-20 min total. Then re-run this installer.
-
-If you're behind a corporate proxy/firewall: check if you can reach
-https://github.com/WiseLibs/better-sqlite3/releases (prebuild-install
-needs to download from there).
-
-For now, no workaround - the app cannot run without this native module.
-
-Log file: $logPath
-"@
+        DieMulti @(
+            "better-sqlite3 native module FAILED to build.",
+            "",
+            "Most likely cause: missing C++ build toolchain.",
+            "",
+            "QUICK FIX (one command, ~3 GB, ~10 min):",
+            '  winget install Microsoft.VisualStudio.2022.BuildTools --override "--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"',
+            "  winget install Python.Python.3.12",
+            "Then re-run this installer.",
+            "",
+            "ALTERNATIVE: install Node 22 LTS (has prebuilts, no toolchain needed):",
+            "  winget uninstall OpenJS.NodeJS",
+            "  winget install OpenJS.NodeJS.LTS",
+            "Then close + reopen PowerShell, re-run installer.",
+            "",
+            "If behind corporate proxy/firewall:",
+            "  Check access to https://github.com/WiseLibs/better-sqlite3/releases",
+            "",
+            "Log file: $logPath"
+        )
     }
 
     Say "better-sqlite3 binding verified: $($sqliteBinding.FullName)"
@@ -478,19 +512,19 @@ Log file: $logPath
     # Without this, migration errors silently vanish from the log.
     & node scripts/migrate.cjs 2>&1 | ForEach-Object { Write-Host $_ }
     if ($LASTEXITCODE -ne 0) {
-        Die @"
-Database migrations failed (exit $LASTEXITCODE).
-
-The most common cause is a corrupted or partially-built better-sqlite3.
-If you see "Could not locate the bindings file" above, run:
-  cd '$dir'
-  pnpm rebuild better-sqlite3 --verbose
-
-If you see "SQLITE_CORRUPT" or "no such table", your data.db may be damaged.
-Backup data.db, delete it, and re-run the installer to start fresh.
-
-Full error output is logged above and in: $logPath
-"@
+        DieMulti @(
+            "Database migrations failed (exit $LASTEXITCODE).",
+            "",
+            "The most common cause is a corrupted or partially-built better-sqlite3.",
+            "If you see 'Could not locate the bindings file' above, run:",
+            "  cd $dir",
+            "  pnpm rebuild better-sqlite3 --verbose",
+            "",
+            "If you see 'SQLITE_CORRUPT' or 'no such table', data.db may be damaged.",
+            "Backup data.db, delete it, and re-run the installer to start fresh.",
+            "",
+            "Full error output is logged above and in: $logPath"
+        )
     }
 
     if (-not (Test-Path ".env.local")) {
