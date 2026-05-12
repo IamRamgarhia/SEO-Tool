@@ -78,11 +78,14 @@ export async function pingAll(): Promise<{
 }
 
 export async function listTargets() {
-  return db.select().from(uptimeTargets).orderBy(uptimeTargets.createdAt);
+  return await db
+    .select()
+    .from(uptimeTargets)
+    .orderBy(uptimeTargets.createdAt);
 }
 
 export async function recentPings(targetId: number, limit = 50) {
-  return db
+  return await db
     .select()
     .from(uptimePings)
     .where(eq(uptimePings.targetId, targetId))

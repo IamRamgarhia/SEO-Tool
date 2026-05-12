@@ -33,19 +33,44 @@ function isPublicPath(pathname: string): boolean {
   return false;
 }
 
+/**
+ * Read `?embed=1` once at the edge and forward the bit to the rest of
+ * the request as an `x-embed` request header. The root layout reads
+ * that header via `next/headers` and skips rendering the shell chrome
+ * — that's how the per-client tool drawer loads tools cleanly in an
+ * iframe without duplicating the app's sidebar / top bar / floating
+ * widgets.
+ *
+ * Doing this here (server-side) instead of via a client useEffect
+ * avoids the "flash of full shell" the iframe used to show before
+ * hydration caught up.
+ */
+function applyEmbedHeader(req: NextRequest): Headers {
+  const requestHeaders = new Headers(req.headers);
+  if (req.nextUrl.searchParams.get("embed") === "1") {
+    requestHeaders.set("x-embed", "1");
+  }
+  return requestHeaders;
+}
+
 export async function middleware(req: NextRequest) {
+  const requestHeaders = applyEmbedHeader(req);
+  const passthrough = () =>
+    NextResponse.next({ request: { headers: requestHeaders } });
+
   const required = process.env.APP_PASSWORD;
-  // No password set → no auth required (single-user local mode)
-  if (!required) return NextResponse.next();
+  // No password set → no auth required (single-user local mode).
+  // Still forward the x-embed header so the layout sees it.
+  if (!required) return passthrough();
 
   const { pathname } = req.nextUrl;
-  if (isPublicPath(pathname)) return NextResponse.next();
+  if (isPublicPath(pathname)) return passthrough();
 
   const cookie = req.cookies.get(COOKIE_NAME);
   if (cookie?.value) {
     const expected = await expectedToken(required);
     if (timingSafeEqual(cookie.value, expected)) {
-      return NextResponse.next();
+      return passthrough();
     }
   }
 

@@ -91,6 +91,9 @@ else
 fi
 cd "$DIR"
 
+# Make launcher executable (ZIP extraction may strip the +x bit)
+[ -f "$DIR/seo.sh" ] && chmod +x "$DIR/seo.sh" 2>/dev/null || true
+
 # ---- 3. find a free port ----------------------------------------------------
 port_in_use() {
   local p="$1"
@@ -212,6 +215,16 @@ EOM
 
   [ -f ".env.local" ] || cp .env.example .env.local 2>/dev/null || true
 
+  # Build once now so daily startup runs in production mode — ~10x
+  # faster page loads and roughly half the RAM of `next dev`.
+  say "Building production bundle (one-time, ~1-2 min). Skips JIT compile on every navigation."
+  BUILD_OK=1
+  if ! $PM run build; then
+    warn "Production build failed — falling back to dev mode for daily startup."
+    warn "You can retry later with: $PM run build"
+    BUILD_OK=0
+  fi
+
   # Kill any prior server we started (idempotent re-run)
   if [ -f "$DIR/.dev-server.pid" ]; then
     OLD_PID="$(cat "$DIR/.dev-server.pid" 2>/dev/null || true)"
@@ -232,10 +245,17 @@ EOM
 
   say "Starting server on port $PORT (background)"
   : >"$DIR/dev-server.log"   # truncate previous log so we don't read stale lines
-  PORT="$PORT" nohup $PM run dev >"$DIR/dev-server.log" 2>&1 &
+  if [ "$BUILD_OK" = "1" ]; then
+    RUN_SCRIPT="start:daily"
+    WAIT_LABEL="(production start, ~2-5s)"
+  else
+    RUN_SCRIPT="dev"
+    WAIT_LABEL="(30-90s for first dev build)"
+  fi
+  PORT="$PORT" nohup $PM run "$RUN_SCRIPT" >"$DIR/dev-server.log" 2>&1 &
   echo "$!" >"$DIR/.dev-server.pid"
 
-  say "Waiting for the app to come up… (30-90s for first build)"
+  say "Waiting for the app to come up… $WAIT_LABEL"
   for i in $(seq 1 90); do
     if curl -fsS -o /dev/null "http://localhost:$PORT/api/v1/health" 2>/dev/null; then
       UP=1
@@ -289,7 +309,7 @@ if [ -d "$DESKTOP" ]; then
       echo "Update:  Re-run the installer command"
     else
       echo "Stop:    kill \$(cat $DIR/.dev-server.pid)"
-      echo "Start:   cd $DIR && PORT=$PORT pnpm dev"
+      echo "Start:   cd $DIR && ./seo.sh    (or: PORT=$PORT pnpm start:daily)"
       echo "Logs:    tail -f $DIR/dev-server.log"
       echo "Update:  Re-run the installer command"
     fi

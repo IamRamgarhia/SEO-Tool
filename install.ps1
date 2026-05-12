@@ -205,6 +205,18 @@ Or, if you have winget (Windows 10+):
         }
     }
 
+    # Build once now so daily startup runs in production mode — ~10x
+    # faster page loads and roughly half the RAM of `next dev`.
+    Say "Building production bundle (one-time, ~1-2 min). Skips JIT compile every navigation."
+    & $pm run build
+    if ($LASTEXITCODE -ne 0) {
+        Warn "Production build failed — falling back to dev mode for daily startup."
+        Warn "You can retry later with: $pm run build"
+        $script:buildOk = $false
+    } else {
+        $script:buildOk = $true
+    }
+
     Say "Starting server on port $port (background)"
     $logFile = Join-Path $dir "dev-server.log"
     $errFile = Join-Path $dir "dev-server.err.log"
@@ -233,10 +245,11 @@ Or, if you have winget (Windows 10+):
     # shims, so Start-Process -FilePath "pnpm" hits "%1 is not a valid Win32
     # application". A real .cmd file works around it cleanly and avoids all
     # the quote-escaping problems of `cmd /c "long command"`.
+    $runScript = if ($script:buildOk) { "start:daily" } else { "dev" }
     @"
 @echo off
 set PORT=$port
-$pm run dev
+$pm run $runScript
 "@ | Out-File -FilePath $batFile -Encoding ASCII
 
     $proc = Start-Process -FilePath $batFile `
@@ -246,7 +259,8 @@ $pm run dev
         -PassThru -WindowStyle Hidden -ErrorAction Stop
     $proc.Id | Out-File -FilePath $pidFile -Encoding ascii
 
-    Say "Waiting for the app to come up... (30-90s for first build)"
+    $waitLabel = if ($script:buildOk) { "(production start, ~2-5s)" } else { "(30-90s for first dev build)" }
+    Say "Waiting for the app to come up... $waitLabel"
     for ($i = 0; $i -lt 90; $i++) {
         try {
             $r = Invoke-WebRequest -Uri "http://localhost:$port/api/v1/health" -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop
@@ -292,7 +306,7 @@ Update:  Re-run the installer command
     } else {
 @"
 Stop:    Get-Process -Id (Get-Content '$dir\.dev-server.pid') | Stop-Process
-Start:   cd '$dir'; `$env:PORT='$port'; pnpm dev
+Start:   cd '$dir'; .\seo.cmd     (or: ``$env:PORT='$port'; pnpm start:daily``)
 Logs:    Get-Content '$dir\dev-server.log' -Wait -Tail 100
 Update:  Re-run the installer command
 "@

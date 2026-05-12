@@ -9,9 +9,9 @@
  */
 
 import { promises as fs } from "node:fs";
-import path from "node:path";
+import { dataFile } from "./data-dir";
 
-const FILE = path.join(process.cwd(), ".seo-port");
+const FILE = dataFile(".seo-port");
 
 export async function rememberPort(port: string | number): Promise<void> {
   const p = String(port).trim();

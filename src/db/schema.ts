@@ -1713,3 +1713,97 @@ export const manualReportData = sqliteTable("manual_report_data", {
 });
 export type ManualReportData = typeof manualReportData.$inferSelect;
 export type NewManualReportData = typeof manualReportData.$inferInsert;
+
+/**
+ * Per-client recurring automation. Each row says "for client X, every N
+ * days at HH:MM UTC, auto-generate a Y and either drop it into the
+ * review queue or publish it directly."
+ *
+ * kinds:
+ *   blog_draft         — AI brief + draft → WordPress (draft or publish)
+ *   gbp_post           — ≤1500 char copy → Google Business Profile localPosts API
+ *   social_post        — short copy → copy-to-clipboard (no auto-OAuth in v1)
+ *   internal_checklist — tasks rows seeded for the day (no external publish)
+ */
+export const dailySchedules = sqliteTable("daily_schedules", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  clientId: integer("client_id")
+    .notNull()
+    .references(() => clients.id, { onDelete: "cascade" }),
+  kind: text("kind", {
+    enum: ["blog_draft", "gbp_post", "social_post", "internal_checklist"],
+  }).notNull(),
+  /** 1 for daily, 7 for weekly, 30 for monthly. */
+  cadenceDays: integer("cadence_days").notNull().default(1),
+  /** HHMM in UTC, e.g. 900 = 09:00 UTC. */
+  timeUtc: integer("time_utc").notNull().default(900),
+  /** When true, skip the review queue and publish directly on the next tick. */
+  autoPublish: integer("auto_publish", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  /** Kind-specific knobs. */
+  configJson: text("config_json", { mode: "json" }).$type<
+    Record<string, unknown>
+  >(),
+  lastRunAt: integer("last_run_at", { mode: "timestamp" }),
+  nextRunAt: integer("next_run_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+export type DailySchedule = typeof dailySchedules.$inferSelect;
+export type NewDailySchedule = typeof dailySchedules.$inferInsert;
+
+/**
+ * Generated-content queue. Every schedule run lands one row here. The
+ * user reviews via /clients/[id]/queue and approves; the daily-agent's
+ * publish step then runs the right publisher and flips status to
+ * "published" or "failed".
+ *
+ * Schedules with auto_publish=true bypass pending_review and land
+ * directly as "approved".
+ */
+export const publishQueue = sqliteTable("publish_queue", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  scheduleId: integer("schedule_id").references(() => dailySchedules.id, {
+    onDelete: "set null",
+  }),
+  clientId: integer("client_id")
+    .notNull()
+    .references(() => clients.id, { onDelete: "cascade" }),
+  kind: text("kind", {
+    enum: ["blog_draft", "gbp_post", "social_post", "internal_checklist"],
+  }).notNull(),
+  status: text("status", {
+    enum: ["pending_review", "approved", "published", "skipped", "failed"],
+  })
+    .notNull()
+    .default("pending_review"),
+  title: text("title"),
+  body: text("body"),
+  payloadJson: text("payload_json", { mode: "json" }).$type<
+    Record<string, unknown>
+  >(),
+  scheduledFor: integer("scheduled_for", { mode: "timestamp" }).notNull(),
+  generatedAt: integer("generated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  publishedAt: integer("published_at", { mode: "timestamp" }),
+  /** External identifier returned by the publisher (WP post ID, GBP post name). */
+  publishedRef: text("published_ref"),
+  errorMsg: text("error_msg"),
+  reviewNote: text("review_note"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+export type PublishQueueItem = typeof publishQueue.$inferSelect;
+export type NewPublishQueueItem = typeof publishQueue.$inferInsert;
+

@@ -1,0 +1,7 @@
+# GitHub renders a "Sponsor" button on the repo page when this file
+# exists. Visitors get one click to either of these — UPI is handled
+# in-app (GitHub doesn't support UPI as a first-class option), but
+# PayPal + the dicecodes.com support page both surface here.
+custom:
+  - https://www.paypal.com/donate/?business=princeramgarhiaa@gmail.com&currency_code=USD&item_name=Support%20DiceCodes
+  - https://dicecodes.com

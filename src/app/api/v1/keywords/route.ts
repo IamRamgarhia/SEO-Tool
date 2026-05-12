@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import { keywordRankings, keywords, clients } from "@/db/schema";
 import {
@@ -34,13 +34,19 @@ export async function GET(req: Request) {
 
   const kwRows = cid ? await baseQ.where(eq(keywords.clientId, cid)) : await baseQ;
 
-  // Latest rank per keyword
+  // Latest rank per keyword — scoped to the keywords this caller asked
+  // about, and capped to avoid pulling years of ranking history into
+  // memory for the dedup. 10 most-recent rows per keyword is plenty to
+  // find the latest, even allowing for same-day duplicates.
   const latestRanks = new Map<number, { position: number | null; checkedAt: Date | null }>();
   if (kwRows.length > 0) {
+    const kwIds = kwRows.map((k) => k.id);
     const rankRows = await db
       .select()
       .from(keywordRankings)
-      .orderBy(desc(keywordRankings.checkedAt));
+      .where(inArray(keywordRankings.keywordId, kwIds))
+      .orderBy(desc(keywordRankings.checkedAt))
+      .limit(kwIds.length * 10);
     for (const r of rankRows) {
       if (!latestRanks.has(r.keywordId)) {
         latestRanks.set(r.keywordId, {

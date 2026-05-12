@@ -9,6 +9,7 @@ import {
   Info,
   LogOut,
   ExternalLink,
+  Heart,
 } from "lucide-react";
 
 /**
@@ -138,6 +139,15 @@ export function ProfileMenu() {
             >
               <Info className="size-3.5 text-muted-foreground" />
               What's automated
+            </Link>
+            <div className="my-1 border-t border-white/[0.06]" />
+            <Link
+              href="/about"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-white/5"
+            >
+              <Heart className="size-3.5 text-rose-300" />
+              About &amp; support the developer
             </Link>
             <a
               href="https://github.com/IamRamgarhia/seo"

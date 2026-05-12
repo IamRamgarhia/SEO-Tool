@@ -29,5 +29,17 @@ export async function GET(
     .limit(1);
   if (!row) return jsonError(404, "Client not found");
 
-  return jsonOk({ client: row });
+  // Strip credential blobs before returning. Stored as ciphertext but
+  // still — a caller with read scope shouldn't see them. Defensive
+  // pattern: destructure the sensitive fields out, return the rest.
+  const {
+    googleRefreshToken: _g1,
+    googleAccessToken: _g2,
+    googleAccessTokenExpiresAt: _g3,
+    wpKey: _wp,
+    ...safe
+  } = row;
+  void _g1; void _g2; void _g3; void _wp;
+
+  return jsonOk({ client: safe });
 }

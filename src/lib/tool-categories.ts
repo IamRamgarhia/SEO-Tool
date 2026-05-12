@@ -78,6 +78,9 @@ const EXPLICIT: Record<string, ToolCategoryId> = {
   "/tools/content-attack-brief": "everyday",
   "/tools/serp-features": "everyday",
 
+  // Local SEO tools (workspace-level — per-client lives under /gbp/c/...)
+  "/tools/gbp-reply": "local",
+
   // Audits & scoring
   "/tools/eeat-audit": "audit",
   "/tools/sxo": "audit",
@@ -120,6 +123,7 @@ const EXPLICIT: Record<string, ToolCategoryId> = {
   "/tools/youtube": "keywords",
   "/tools/serp-volatility": "keywords",
   "/tools/cannibalization": "keywords",
+  "/tools/ads-funnel": "keywords",
 
   // Backlinks & outreach
   "/tools/backlink-discovery": "backlinks",

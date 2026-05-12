@@ -103,17 +103,47 @@ export function RecentRuns({
                 type="button"
                 onClick={() => onRestore?.(r)}
                 disabled={!onRestore}
-                className={`min-w-0 flex-1 truncate text-left ${
-                  onRestore
-                    ? "hover:text-foreground"
-                    : "cursor-default"
+                className={`min-w-0 flex-1 text-left ${
+                  onRestore ? "hover:text-foreground" : "cursor-default"
                 }`}
-                title={onRestore ? "Click to restore this run" : undefined}
+                title={
+                  onRestore
+                    ? `Click to restore — ${r.label}`
+                    : r.label
+                }
               >
-                <span className="font-medium">{r.label}</span>
-                <span className="ml-2 text-[10px] text-muted-foreground">
-                  {new Date(r.createdAt).toLocaleString()}
-                </span>
+                {/* Labels follow a convention: "subject · result1 · result2".
+                    Render first chunk as the subject (primary text) and
+                    join the rest as a muted secondary line so the row
+                    reads as data, not a single string of dots. */}
+                {(() => {
+                  const parts = r.label.split("·").map((s) => s.trim());
+                  const [subject, ...rest] = parts;
+                  const hasRest = rest.length > 0;
+                  return (
+                    <>
+                      <div className="truncate font-medium">
+                        {subject}
+                      </div>
+                      <div className="flex items-center gap-2 truncate text-[10px] text-muted-foreground">
+                        {hasRest && (
+                          <span className="truncate">{rest.join(" · ")}</span>
+                        )}
+                        {hasRest && (
+                          <span aria-hidden className="text-muted-foreground/40">
+                            ·
+                          </span>
+                        )}
+                        <time
+                          dateTime={new Date(r.createdAt).toISOString()}
+                          className="shrink-0"
+                        >
+                          {new Date(r.createdAt).toLocaleString()}
+                        </time>
+                      </div>
+                    </>
+                  );
+                })()}
               </button>
               <div className="flex shrink-0 items-center gap-1">
                 {onRestore && (

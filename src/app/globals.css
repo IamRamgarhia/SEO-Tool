@@ -486,3 +486,15 @@ html[data-ui-mode="pro"] {
     vertical-align: middle;
   }
 }
+
+/*
+ * Embed mode is now handled fully server-side: middleware sets an
+ * x-embed request header when it sees ?embed=1 in the URL, the root
+ * layout reads it via next/headers and skips rendering the shell
+ * (sidebar, top bar, floating widgets) entirely. No client toggle,
+ * no flash. data-embed="1" stays on <html> as a hook for any future
+ * CSS variant rules.
+ */
+html[data-embed="1"] main {
+  padding: 1rem !important;
+}

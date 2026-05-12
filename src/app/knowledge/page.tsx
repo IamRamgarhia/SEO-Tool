@@ -45,6 +45,7 @@ export default function KnowledgeHubPage() {
         </div>
       </section>
 
+      <FreeCourses />
       <RankingSignals />
       <TopicalAuthority />
       <WhyBlog />
@@ -62,6 +63,10 @@ export default function KnowledgeHubPage() {
 
 function Toc() {
   const items = [
+    {
+      id: "free-courses",
+      label: "Free courses + certifications (Google, HubSpot, Semrush, +more)",
+    },
     { id: "ranking-signals", label: "Ranking signals that actually move the needle" },
     { id: "topical-authority", label: "Topical authority — how the top sites win" },
     { id: "why-blog", label: "Why a professional site needs a blog" },
@@ -928,6 +933,307 @@ function Eeat() {
       <p>
         Run the in-tool E-E-A-T audit (Tools → E-E-A-T audit) on any page to
         get a score and concrete fix list.
+      </p>
+    </Section>
+  );
+}
+
+type CourseLink = {
+  title: string;
+  provider: string;
+  url: string;
+  duration: string;
+  cert: "yes" | "paid" | "no";
+  blurb: string;
+};
+
+const SEO_COURSES: CourseLink[] = [
+  {
+    title: "Google Search Central — Documentation + tutorials",
+    provider: "Google",
+    url: "https://developers.google.com/search/docs",
+    duration: "Self-paced",
+    cert: "no",
+    blurb:
+      "The actual source of truth from Google: ranking docs, technical SEO guidelines, structured-data spec. Bookmark over anything else.",
+  },
+  {
+    title: "Fundamentals of Digital Marketing",
+    provider: "Google (Digital Garage)",
+    url: "https://learndigital.withgoogle.com/digitalgarage/course/digital-marketing",
+    duration: "~40 hours",
+    cert: "yes",
+    blurb:
+      "Free certified course covering SEO basics, content marketing, analytics, ads, and social. Accredited by IAB Europe + Open University.",
+  },
+  {
+    title: "SEO Certification Course",
+    provider: "HubSpot Academy",
+    url: "https://academy.hubspot.com/courses/seo-training",
+    duration: "~6 hours",
+    cert: "yes",
+    blurb:
+      "Free certificate. Solid intro for non-technical marketers — keyword research, on-page, link building, technical SEO basics.",
+  },
+  {
+    title: "SEO Toolkit Course",
+    provider: "Semrush Academy",
+    url: "https://www.semrush.com/academy/courses/semrush-seo-toolkit-course/",
+    duration: "~3 hours",
+    cert: "yes",
+    blurb:
+      "Free Semrush-issued cert. Practical — focused on how to use SEO tooling to audit + research, even if you don't pay for Semrush.",
+  },
+  {
+    title: "Become an SEO Specialist (LinkedIn Learning Path)",
+    provider: "LinkedIn Learning",
+    url: "https://www.linkedin.com/learning/paths/become-an-seo-expert",
+    duration: "~15 hours",
+    cert: "paid",
+    blurb:
+      "Free with LinkedIn Premium / first-month trial. Adds the LinkedIn profile badge — useful for freelancers + agency talent.",
+  },
+  {
+    title: "Yoast SEO Academy",
+    provider: "Yoast",
+    url: "https://yoast.com/academy/all-academy-courses/",
+    duration: "Varies",
+    cert: "paid",
+    blurb:
+      "Some free (SEO for Beginners), most paid. Excellent if you work on WordPress sites — covers Yoast plugin internals + technical WordPress SEO.",
+  },
+  {
+    title: "Coursera SEO Specialization (UC Davis)",
+    provider: "Coursera × UC Davis",
+    url: "https://www.coursera.org/specializations/seo",
+    duration: "~5 months",
+    cert: "paid",
+    blurb:
+      "University-backed certificate, audit-for-free option. Comprehensive but slower-paced — good for resume value.",
+  },
+  {
+    title: "Ahrefs Blog + YouTube",
+    provider: "Ahrefs",
+    url: "https://ahrefs.com/blog/",
+    duration: "Self-paced",
+    cert: "no",
+    blurb:
+      "Not a course but the highest-quality free SEO content on the internet — original research, real experiments, no fluff. The blog + their YouTube channel together rival any paid program.",
+  },
+  {
+    title: "Moz SEO Learning Center + Whiteboard Friday",
+    provider: "Moz",
+    url: "https://moz.com/learn/seo",
+    duration: "Self-paced",
+    cert: "no",
+    blurb:
+      "The original SEO education resource. Whiteboard Friday videos are still the best way to learn a new SEO concept fast.",
+  },
+];
+
+const ADS_COURSES: CourseLink[] = [
+  {
+    title: "Google Ads Skillshop (full certification paths)",
+    provider: "Google Skillshop",
+    url: "https://skillshop.exceedlms.com/student/path/18128-google-ads-certifications",
+    duration: "~5-10 hours per cert",
+    cert: "yes",
+    blurb:
+      "The official Google Ads certifications: Search, Display, Video, Shopping, App, Measurement, AI-Powered Performance Ads. Free, valid 12 months. Required for any agency that wants Google Partner status.",
+  },
+  {
+    title: "Google Analytics 4 Certification",
+    provider: "Google Skillshop",
+    url: "https://skillshop.exceedlms.com/student/path/2938-google-analytics-certification",
+    duration: "~4 hours",
+    cert: "yes",
+    blurb:
+      "Free official GA4 cert. Critical if you're going to report on ad performance — most agencies still don't have someone who actually knows GA4.",
+  },
+  {
+    title: "Meta Blueprint Certification",
+    provider: "Meta",
+    url: "https://www.facebook.com/business/learn/certification",
+    duration: "Varies per cert",
+    cert: "paid",
+    blurb:
+      "Meta's official Facebook + Instagram ad certifications. Exam is paid ($99-$150) but all the prep coursework is free. Look for: Media Buying Professional, Media Planning Professional.",
+  },
+  {
+    title: "Meta Blueprint Free Courses",
+    provider: "Meta",
+    url: "https://www.facebook.com/business/learn",
+    duration: "Self-paced",
+    cert: "no",
+    blurb:
+      "The course library itself is fully free — Meta only charges for the exam. Hundreds of modules on ad creation, targeting, Pixel + CAPI, Advantage+ campaigns.",
+  },
+  {
+    title: "LinkedIn Marketing Labs",
+    provider: "LinkedIn",
+    url: "https://business.linkedin.com/marketing-solutions/success/learning-center",
+    duration: "~5-10 hours per cert",
+    cert: "yes",
+    blurb:
+      "Free LinkedIn-issued certs: Marketing Strategy, Content Marketing, Marketing Analytics. The 'Marketing Strategy Certified' badge is rare on LinkedIn — meaningful trust signal.",
+  },
+  {
+    title: "TikTok Academy (formerly Skillshop)",
+    provider: "TikTok",
+    url: "https://www.tiktok.com/business/en/blog/tiktok-academy-launch",
+    duration: "Varies",
+    cert: "yes",
+    blurb:
+      "Free TikTok-issued cert. Covers Spark Ads, TikTok Shop, creative best-practices. Essential if you'll touch e-commerce + Gen Z audiences.",
+  },
+  {
+    title: "Microsoft Advertising Certified Professional",
+    provider: "Microsoft Advertising",
+    url: "https://about.ads.microsoft.com/en-us/resources/training",
+    duration: "~8 hours",
+    cert: "yes",
+    blurb:
+      "Free Bing Ads / Microsoft Ads cert. Lower-traffic platform but cheaper CPCs + 7% search market share is meaningful at scale.",
+  },
+  {
+    title: "Coursera Google Digital Marketing & E-commerce Certificate",
+    provider: "Coursera × Google",
+    url: "https://www.coursera.org/professional-certificates/google-digital-marketing-ecommerce",
+    duration: "~6 months",
+    cert: "paid",
+    blurb:
+      "Google-issued professional certificate. ~$50/mo on Coursera, financial aid available. Covers SEO, SEM, social, email, ecom analytics. Resume-grade.",
+  },
+];
+
+const ANALYTICS_COURSES: CourseLink[] = [
+  {
+    title: "Google Tag Manager Fundamentals",
+    provider: "Google Skillshop",
+    url: "https://skillshop.exceedlms.com/student/path/12158-google-tag-manager",
+    duration: "~3 hours",
+    cert: "yes",
+    blurb:
+      "Free official cert. Almost every ad tracking issue I see traces back to bad GTM implementation — this saves you debugging time later.",
+  },
+  {
+    title: "Looker Studio (Data Studio) Tutorial Series",
+    provider: "Google",
+    url: "https://support.google.com/looker-studio/answer/9171315",
+    duration: "Self-paced",
+    cert: "no",
+    blurb:
+      "Free official tutorials for building client-facing dashboards. Looker Studio is the cheapest way to look professional in monthly reports.",
+  },
+  {
+    title: "CXL Conversion Optimization Mini-Degree (free preview)",
+    provider: "CXL Institute",
+    url: "https://cxl.com/institute/all-courses/",
+    duration: "~20 hours (free preview)",
+    cert: "paid",
+    blurb:
+      "Most rigorous CRO curriculum available. Paid program is expensive (~$300/mo) but the free preview lessons are some of the best CRO content online.",
+  },
+];
+
+function CourseList({ courses }: { courses: CourseLink[] }) {
+  return (
+    <ul className="not-prose mt-3 grid gap-2 sm:grid-cols-2">
+      {courses.map((c) => (
+        <li
+          key={c.url}
+          className="group relative rounded-xl border border-white/5 bg-card/40 p-4 transition-colors hover:bg-card/60"
+        >
+          <a
+            href={c.url}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="absolute inset-0"
+            aria-label={`Open ${c.title} — opens in a new tab`}
+          />
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h4 className="text-sm font-semibold text-foreground group-hover:text-violet-200">
+                {c.title}
+              </h4>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                {c.provider} · {c.duration}
+              </p>
+            </div>
+            <span
+              className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider ring-1 ring-inset ${
+                c.cert === "yes"
+                  ? "bg-emerald-500/15 text-emerald-300 ring-emerald-500/30"
+                  : c.cert === "paid"
+                    ? "bg-amber-500/15 text-amber-300 ring-amber-500/30"
+                    : "bg-white/5 text-muted-foreground ring-white/10"
+              }`}
+            >
+              {c.cert === "yes" ? "Free cert" : c.cert === "paid" ? "Paid cert" : "No cert"}
+            </span>
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">{c.blurb}</p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function FreeCourses() {
+  return (
+    <Section
+      id="free-courses"
+      icon={BookOpen}
+      title="Free courses + certifications"
+      accent="emerald"
+    >
+      <p>
+        Curated free (and a few selectively-paid) courses worth your time.
+        Where a free certificate is on offer it&apos;s called out — those go
+        on LinkedIn and resumes immediately. <strong>Green = free cert.</strong>{" "}
+        <strong>Amber = paid cert / free coursework.</strong>{" "}
+        <strong>Grey = no cert, but worth reading anyway.</strong>
+      </p>
+
+      <h3>SEO — fundamentals through advanced</h3>
+      <CourseList courses={SEO_COURSES} />
+
+      <h3>Paid ads — Google Ads, Meta, LinkedIn, TikTok</h3>
+      <CourseList courses={ADS_COURSES} />
+
+      <h3>Analytics, tracking, conversion optimization</h3>
+      <CourseList courses={ANALYTICS_COURSES} />
+
+      <h3>The smart sequence for someone starting fresh</h3>
+      <ol>
+        <li>
+          <strong>Week 1-2:</strong> Google Fundamentals of Digital Marketing
+          (broad foundation) + Google Search Central docs (skim every section)
+        </li>
+        <li>
+          <strong>Week 3:</strong> HubSpot SEO Certification — fastest to a
+          credential
+        </li>
+        <li>
+          <strong>Week 4:</strong> Google Ads Search Certification — the
+          single most marketable cert in this list
+        </li>
+        <li>
+          <strong>Week 5:</strong> Google Analytics 4 Certification — every
+          agency client&apos;s data flows through GA4; nothing else works
+          without it
+        </li>
+        <li>
+          <strong>Ongoing:</strong> Ahrefs blog + Moz Whiteboard Friday +
+          subscribe to Search Engine Land newsletter. The certs stop teaching
+          new things after a few months; the blogs never do.
+        </li>
+      </ol>
+
+      <p className="mt-3 rounded-md bg-violet-500/[0.06] px-3 py-2 text-xs text-violet-200 ring-1 ring-inset ring-violet-500/20">
+        💡 All certifications expire 12-24 months after issue. Set a calendar
+        reminder to retake — the questions change as the platforms evolve and
+        an expired cert is worse than no cert (it signals you stopped learning).
       </p>
     </Section>
   );

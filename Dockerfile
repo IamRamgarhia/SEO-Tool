@@ -32,8 +32,18 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
-# Default DB path lives on a mounted volume (see docker-compose.yml)
+# All user state lives on a mounted volume (see docker-compose.yml):
+# data.db, .seo-encryption-key, .seo-port, screenshots/. One volume,
+# one backup target — survives `docker compose down` + rebuilds.
+ENV SEO_DATA_DIR=/data
 ENV SEO_DB_PATH=/data/data.db
+# Lets /api/restart and /api/shutdown show Docker-specific guidance
+# ("use `docker compose restart`") instead of trying to run seo.sh.
+ENV RUNNING_IN_DOCKER=1
+# Inside the container we must bind to all interfaces so the host
+# port mapping works. The container is the security boundary; users
+# expose 3000 to the host as they choose in docker-compose.yml.
+ENV HOSTNAME=0.0.0.0
 
 RUN corepack enable && corepack prepare pnpm@10 --activate
 

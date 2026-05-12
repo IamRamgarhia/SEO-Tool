@@ -146,6 +146,53 @@ export async function setPostSchema(
 }
 
 /**
+ * Create a new WordPress post via the plugin. Used by the daily-automation
+ * publish step when a blog_draft queue item is approved.
+ *
+ * Requires plugin v2.0+ which exposes `POST /wp-json/seo-tool/v1/posts`.
+ * Older plugin versions return 404 here; caller treats that as "publisher
+ * not available" and the queue item stays approved for the user to copy
+ * out manually.
+ *
+ * `status` is "draft" by default — the user reviews in WP admin before
+ * publishing. Schedules with auto_publish=true should pass "publish".
+ */
+export async function createWpPost(
+  creds: WpCreds,
+  input: {
+    title: string;
+    content: string;
+    excerpt?: string;
+    status?: "draft" | "publish";
+    schemaJsonLd?: unknown;
+    metaDescription?: string;
+  },
+): Promise<{ ok: true; id: number; url: string } | { ok: false; error: string }> {
+  type Resp = { id: number; url: string };
+  const r = await wpFetch<Resp>(creds, "/posts", {
+    method: "POST",
+    body: JSON.stringify({
+      title: input.title,
+      content: input.content,
+      excerpt: input.excerpt ?? "",
+      status: input.status ?? "draft",
+      schemaJsonLd: input.schemaJsonLd ?? null,
+      metaDescription: input.metaDescription ?? "",
+    }),
+  });
+  if (!r.ok) {
+    return {
+      ok: false,
+      error:
+        r.status === 404
+          ? "WordPress plugin needs upgrading (no /posts endpoint). Reinstall the SEO Tool Bridge plugin."
+          : r.error,
+    };
+  }
+  return { ok: true, id: r.data.id, url: r.data.url };
+}
+
+/**
  * Try to resolve a public URL to a post ID. The plugin's /find endpoint
  * does this; if it 404s we fall back to fetching the URL and parsing the
  * `<link rel="shortlink">` header for `?p=<id>`.

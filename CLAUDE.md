@@ -10,7 +10,7 @@ An open-source, self-hostable SEO platform for freelancers, small agencies, and 
 
 **Tagline:** "The integrated workflow OS for SEO freelancers — modern stack, truly free, no paid API keys required to get started."
 
-**License:** AGPL-3.0 (same as Plausible, PostHog — prevents AWS-style cloning while staying open)
+**License:** PolyForm Noncommercial 1.0.0 (source-available; free for self-hosting and freelance/agency client work; commercial resale or paid-SaaS hosting requires a paid license from DiceCodes). Switched from the originally-planned AGPL-3.0 in May 2026 — see Part 18 decision log.
 
 **Target users:**
 - Freelance SEOs managing 1-15 clients

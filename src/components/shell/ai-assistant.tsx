@@ -78,34 +78,22 @@ export function AIAssistant() {
 
   return (
     <>
-      {/* Floating triggers — main AI assistant + "I'm stuck" shortcut */}
-      <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-2">
-        <button
-          type="button"
-          onClick={() => {
-            setMessages([]);
-            send(
-              `I'm stuck on ${pageContext} (path: ${pathname}). Briefly: what is this for, what should I be doing here, and what are the 2-3 most useful actions I can take right now?`,
-            );
-            setOpen(true);
-          }}
-          aria-label="I'm stuck — help me with this page"
-          className="flex h-10 items-center gap-1.5 rounded-full bg-amber-500/15 px-3 text-xs font-medium text-amber-300 ring-1 ring-inset ring-amber-500/30 shadow-lg shadow-amber-500/20 hover:bg-amber-500/25"
-        >
-          <HelpCircle className="size-4" />
-          I'm stuck
-        </button>
+      {/*
+        Single floating AI trigger. Was two buttons + a perpetual
+        animate-ping; the ping was a constant visual nag and the
+        secondary "I'm stuck" button was just a pre-filled question.
+        Now it's one bubble; "I'm stuck" lives inside the chat as a
+        quick-action button shown when the conversation is empty.
+      */}
+      <div className="fixed bottom-5 right-5 z-40">
         <button
           type="button"
           onClick={() => setOpen(true)}
           aria-label="AI assistant"
+          title="AI assistant — Esc to close"
           className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 via-fuchsia-500 to-indigo-600 text-white shadow-xl shadow-violet-500/40 ring-1 ring-inset ring-white/30 transition-transform hover:scale-110"
         >
           <Sparkles className="size-5" />
-          <span className="absolute -top-1 -right-1 flex size-3">
-            <span className="absolute inline-flex size-full animate-ping rounded-full bg-violet-400 opacity-75" />
-            <span className="relative inline-flex size-3 rounded-full bg-violet-300" />
-          </span>
         </button>
       </div>
 
@@ -163,6 +151,21 @@ export function AIAssistant() {
                     </p>
                   </div>
                   <div className="grid w-full max-w-md gap-2 pt-2">
+                    {/* "I'm stuck" was a separate floating button; now
+                        a first-class quick action inside the chat when
+                        the conversation is empty. */}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        send(
+                          `I'm stuck on ${pageContext} (path: ${pathname}). Briefly: what is this for, what should I be doing here, and what are the 2-3 most useful actions I can take right now?`,
+                        )
+                      }
+                      className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-left text-xs text-amber-200 transition-colors hover:bg-amber-500/15"
+                    >
+                      <HelpCircle className="size-3.5 shrink-0" />
+                      I&apos;m stuck on this page — explain it
+                    </button>
                     {SUGGESTIONS.map((s) => (
                       <button
                         key={s}

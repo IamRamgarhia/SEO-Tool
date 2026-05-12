@@ -81,6 +81,8 @@ async function runDailyAgentBody(): Promise<DailyAgentReport> {
   await runStep(steps, "robots.snapshot", robotsSnapshotStep);
   await runStep(steps, "sitemap.health", sitemapHealthStep);
   await runStep(steps, "traffic.drop_alert", trafficDropAlertStep);
+  await runStep(steps, "automations.generate", runScheduleGenerationStep);
+  await runStep(steps, "automations.publish", runQueuePublishStep);
   if (startedAt.getUTCDay() === 1) {
     // Mondays only — heavier work
     await runStep(steps, "rank.weekly_sweep", weeklyRankSweep);
@@ -267,6 +269,26 @@ async function runScheduledLocalGridsStep(): Promise<string> {
     return `${r.ran}/${r.scheduled} grid schedules ran`;
   } catch (err) {
     throw new Error((err as Error).message ?? "grid scheduler failed");
+  }
+}
+
+async function runScheduleGenerationStep(): Promise<string> {
+  try {
+    const { tickScheduleGeneration } = await import("./daily-automations");
+    const r = await tickScheduleGeneration();
+    return `${r.generated} generated, ${r.skipped} skipped`;
+  } catch (err) {
+    throw new Error((err as Error).message ?? "schedule generation failed");
+  }
+}
+
+async function runQueuePublishStep(): Promise<string> {
+  try {
+    const { tickQueuePublish } = await import("./daily-automations");
+    const r = await tickQueuePublish();
+    return `${r.published} published, ${r.failed} failed`;
+  } catch (err) {
+    throw new Error((err as Error).message ?? "queue publish failed");
   }
 }
 

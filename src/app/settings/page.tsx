@@ -12,7 +12,6 @@ import {
   Database,
   Key,
   Mail,
-  Moon,
   Palette,
   Plug,
   Settings as SettingsIcon,
@@ -43,6 +42,7 @@ import { apiKeys, inboundWebhooks } from "@/db/schema";
 import { desc as descSql } from "drizzle-orm";
 import { InboundWebhooksManager } from "./inbound-webhooks/manager";
 import { UpdateCard } from "./update-card";
+import { MaintainerCredit } from "@/components/shell/maintainer-credit";
 
 export default async function SettingsPage() {
   const [{ value: clientCount }] = await db
@@ -66,6 +66,11 @@ export default async function SettingsPage() {
   const brandName = await getSetting<string>("brand.name");
   const brandColor = await getSetting<string>("brand.color");
   const brandLogo = await getSetting<string>("brand.logo_data_url");
+  const brandTagline = await getSetting<string>("brand.tagline");
+  const brandWebsite = await getSetting<string>("brand.website");
+  const brandEmail = await getSetting<string>("brand.email");
+  const brandPhone = await getSetting<string>("brand.phone");
+  const brandFooter = await getSetting<string>("brand.footer_text");
   const { byId: configuredKeys } = await configuredProviders();
   const ollamaUrl = await getOllamaUrl();
   const activeProvider = await getActiveProvider();
@@ -96,6 +101,7 @@ export default async function SettingsPage() {
     .orderBy(descSql(inboundWebhooks.createdAt))
     .limit(50);
 
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <PageHeader
@@ -105,51 +111,69 @@ export default async function SettingsPage() {
         accent="violet"
       />
 
-      {/* Updates */}
-      <UpdateCard />
-
-      {/* Install as app — quick link */}
-      <Link
-        href="/settings/install"
-        className="group flex items-center gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-accent"
-      >
-        <div className="grid size-8 shrink-0 place-items-center rounded-md bg-primary/15 text-primary">
-          <Sparkles className="size-4" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="text-[14px] font-medium text-foreground">
-            Install as an app
-          </div>
-          <div className="text-[12px] text-muted-foreground">
-            Desktop shortcut, Start Menu entry, pin to taskbar, own window.
-          </div>
-        </div>
-        <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-      </Link>
-
-      {/* Workspace */}
-      <section className="relative overflow-hidden rounded-2xl border border-white/5 bg-card/40 backdrop-blur-md">
-        <div className="pointer-events-none absolute -left-12 -top-12 size-40 rounded-full bg-violet-500/15 blur-3xl" />
-        <header className="relative border-b border-white/5 px-5 py-4">
-          <h2 className="flex items-center gap-2 text-base font-semibold">
-            <Sparkles className="size-4 text-violet-300" />
-            Workspace
-          </h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Single-user mode — everything runs on this machine.
-          </p>
-        </header>
-        <div className="relative grid gap-4 p-5 sm:grid-cols-2">
-          <SettingRow label="Mode" value="Local · single-user" />
-          <SettingRow label="Theme" value="Dark (default)" icon={Moon} />
-          <SettingRow label="Language" value="English" />
-          <SettingRow label="Timezone" value={Intl.DateTimeFormat().resolvedOptions().timeZone} />
+      {/* Compact workspace strip + jump TOC. Replaces what used to be
+          a full section with 4 read-only rows. Mode + timezone are the
+          only bits worth surfacing; everything else is fixed today. */}
+      <section className="rounded-xl border border-border bg-card/40 p-3">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+          <span className="inline-flex items-center gap-1.5 font-medium">
+            <span className="size-1.5 rounded-full bg-emerald-400" />
+            Local · single-user
+          </span>
+          <span className="text-muted-foreground">{tz}</span>
+          <span className="text-muted-foreground">Dark mode</span>
+          <Link
+            href="/shortcuts"
+            className="ml-auto inline-flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <Sparkles className="size-3" />
+            Keyboard shortcuts
+            <ArrowRight className="size-3" />
+          </Link>
         </div>
       </section>
 
+      {/* Jump TOC — anchor links to each section below. Reorders the
+          mental model around what users actually act on most often. */}
+      <nav
+        aria-label="Settings sections"
+        className="flex flex-wrap gap-1.5 text-xs"
+      >
+        {[
+          { href: "#ai", label: "AI keys", primary: true },
+          { href: "#google", label: "Google" },
+          { href: "#email", label: "Email" },
+          { href: "#brand", label: "Brand" },
+          { href: "#notify", label: "Notifications" },
+          { href: "#api", label: "API access" },
+          { href: "#browser", label: "Browser pool" },
+          { href: "#ai-learning", label: "AI learning" },
+          { href: "#data", label: "Data" },
+          { href: "#install", label: "Install" },
+          { href: "#privacy", label: "Privacy" },
+          { href: "#about", label: "About" },
+        ].map((t) => (
+          <a
+            key={t.href}
+            href={t.href}
+            className={`rounded-md px-2 py-1 ring-1 ring-inset transition-colors ${
+              t.primary
+                ? "bg-violet-500/15 text-violet-300 ring-violet-500/30 hover:bg-violet-500/25"
+                : "bg-white/[0.02] text-muted-foreground ring-white/10 hover:bg-white/[0.05] hover:text-foreground"
+            }`}
+          >
+            {t.label}
+          </a>
+        ))}
+      </nav>
+
+      {/* Updates — keep at top but visually quieter */}
+      <div id="install" className="scroll-mt-24">
+        <UpdateCard />
+      </div>
+
       {/* Data */}
-      <section className="relative overflow-hidden rounded-2xl border border-white/5 bg-card/40 backdrop-blur-md">
-        <div className="pointer-events-none absolute -right-12 -top-12 size-40 rounded-full bg-cyan-500/15 blur-3xl" />
+      <section id="data" className="relative overflow-hidden scroll-mt-24 rounded-2xl border border-white/5 bg-card/40 backdrop-blur-md">
         <header className="relative border-b border-white/5 px-5 py-4">
           <h2 className="flex items-center gap-2 text-base font-semibold">
             <Database className="size-4 text-cyan-300" />
@@ -174,8 +198,7 @@ export default async function SettingsPage() {
       </section>
 
       {/* Brand */}
-      <section className="relative overflow-hidden rounded-2xl border border-white/5 bg-card/40 backdrop-blur-md">
-        <div className="pointer-events-none absolute -left-12 -top-12 size-40 rounded-full bg-fuchsia-500/15 blur-3xl" />
+      <section id="brand" className="relative overflow-hidden scroll-mt-24 rounded-2xl border border-white/5 bg-card/40 backdrop-blur-md">
         <header className="relative border-b border-white/5 px-5 py-4">
           <h2 className="flex items-center gap-2 text-base font-semibold">
             <Palette className="size-4 text-fuchsia-300" />
@@ -191,13 +214,17 @@ export default async function SettingsPage() {
             initialName={brandName}
             initialColor={brandColor}
             initialLogoDataUrl={brandLogo}
+            initialTagline={brandTagline}
+            initialWebsite={brandWebsite}
+            initialEmail={brandEmail}
+            initialPhone={brandPhone}
+            initialFooterText={brandFooter}
           />
         </div>
       </section>
 
       {/* Google integration */}
-      <section className="relative overflow-hidden rounded-2xl border border-white/5 bg-card/40 backdrop-blur-md">
-        <div className="pointer-events-none absolute -right-12 -top-12 size-40 rounded-full bg-violet-500/15 blur-3xl" />
+      <section id="google" className="relative overflow-hidden scroll-mt-24 rounded-2xl border border-white/5 bg-card/40 backdrop-blur-md">
         <header className="relative border-b border-white/5 px-5 py-4">
           <h2 className="flex items-center gap-2 text-base font-semibold">
             <Plug className="size-4 text-violet-300" />
@@ -255,8 +282,7 @@ export default async function SettingsPage() {
       </section>
 
       {/* Email / SMTP — for scheduled report delivery */}
-      <section id="smtp" className="relative overflow-hidden scroll-mt-24 rounded-2xl border border-white/5 bg-card/40 backdrop-blur-md">
-        <div className="pointer-events-none absolute -left-12 -top-12 size-40 rounded-full bg-cyan-500/15 blur-3xl" />
+      <section id="email" className="relative overflow-hidden scroll-mt-24 rounded-2xl border border-white/5 bg-card/40 backdrop-blur-md">
         <header className="relative border-b border-white/5 px-5 py-4">
           <h2 className="flex items-center gap-2 text-base font-semibold">
             <Mail className="size-4 text-cyan-300" />
@@ -293,8 +319,7 @@ export default async function SettingsPage() {
       </section>
 
       {/* Notifications */}
-      <section className="relative overflow-hidden rounded-2xl border border-white/5 bg-card/40 backdrop-blur-md">
-        <div className="pointer-events-none absolute -right-12 -top-12 size-40 rounded-full bg-fuchsia-500/15 blur-3xl" />
+      <section id="notify" className="relative overflow-hidden scroll-mt-24 rounded-2xl border border-white/5 bg-card/40 backdrop-blur-md">
         <header className="relative border-b border-white/5 px-5 py-4">
           <h2 className="flex items-center gap-2 text-base font-semibold">
             <Bell className="size-4 text-fuchsia-300" />
@@ -333,8 +358,7 @@ export default async function SettingsPage() {
       </section>
 
       {/* Browser pool */}
-      <section className="relative overflow-hidden rounded-2xl border border-white/5 bg-card/40 backdrop-blur-md">
-        <div className="pointer-events-none absolute -right-12 -top-12 size-40 rounded-full bg-cyan-500/15 blur-3xl" />
+      <section id="browser" className="relative overflow-hidden scroll-mt-24 rounded-2xl border border-white/5 bg-card/40 backdrop-blur-md">
         <header className="relative border-b border-white/5 px-5 py-4">
           <h2 className="flex items-center gap-2 text-base font-semibold">
             <Globe className="size-4 text-cyan-300" />
@@ -351,9 +375,8 @@ export default async function SettingsPage() {
         </div>
       </section>
 
-      {/* Public API keys */}
-      <section className="relative overflow-hidden rounded-2xl border border-white/5 bg-card/40 backdrop-blur-md">
-        <div className="pointer-events-none absolute -right-12 -top-12 size-40 rounded-full bg-violet-500/15 blur-3xl" />
+      {/* Public API keys + inbound webhooks both gather under #api */}
+      <section id="api" className="relative overflow-hidden scroll-mt-24 rounded-2xl border border-white/5 bg-card/40 backdrop-blur-md">
         <header className="relative border-b border-white/5 px-5 py-4">
           <h2 className="flex items-center gap-2 text-base font-semibold">
             <Key className="size-4 text-violet-300" />
@@ -382,7 +405,6 @@ export default async function SettingsPage() {
 
       {/* Inbound webhooks */}
       <section className="relative overflow-hidden rounded-2xl border border-white/5 bg-card/40 backdrop-blur-md">
-        <div className="pointer-events-none absolute -right-12 -top-12 size-40 rounded-full bg-cyan-500/15 blur-3xl" />
         <header className="relative border-b border-white/5 px-5 py-4">
           <h2 className="flex items-center gap-2 text-base font-semibold">
             <Plug className="size-4 text-cyan-300" />
@@ -399,9 +421,14 @@ export default async function SettingsPage() {
         </div>
       </section>
 
-      {/* API Keys */}
-      <section id="ai" className="relative overflow-hidden scroll-mt-24 rounded-2xl border border-white/5 bg-card/40 backdrop-blur-md">
-        <div className="pointer-events-none absolute -left-12 -top-12 size-40 rounded-full bg-amber-500/15 blur-3xl" />
+      {/* AI provider keys — primary entry point for most users.
+          Kept a small amber glow because it's the highest-value section
+          and the only one where the visual cue earns its weight. */}
+      <section
+        id="ai"
+        className="relative overflow-hidden scroll-mt-24 rounded-2xl border border-amber-500/20 bg-card/40 backdrop-blur-md"
+      >
+        <div className="pointer-events-none absolute -left-12 -top-12 size-40 rounded-full bg-amber-500/10 blur-3xl" />
         <header className="relative border-b border-white/5 px-5 py-4">
           <h2 className="flex items-center gap-2 text-base font-semibold">
             <Key className="size-4 text-amber-300" />
@@ -427,8 +454,7 @@ export default async function SettingsPage() {
       </section>
 
       {/* AI learning */}
-      <section className="relative overflow-hidden rounded-2xl border border-white/5 bg-card/40 backdrop-blur-md">
-        <div className="pointer-events-none absolute -right-12 -top-12 size-40 rounded-full bg-violet-500/15 blur-3xl" />
+      <section id="ai-learning" className="relative overflow-hidden scroll-mt-24 rounded-2xl border border-white/5 bg-card/40 backdrop-blur-md">
         <header className="relative border-b border-white/5 px-5 py-4">
           <h2 className="flex items-center gap-2 text-base font-semibold">
             <Brain className="size-4 text-violet-300" />
@@ -456,8 +482,7 @@ export default async function SettingsPage() {
       </section>
 
       {/* Privacy */}
-      <section className="relative overflow-hidden rounded-2xl border border-emerald-500/20 bg-emerald-500/5 backdrop-blur-md">
-        <div className="pointer-events-none absolute -right-12 -top-12 size-40 rounded-full bg-emerald-500/15 blur-3xl" />
+      <section id="privacy" className="relative overflow-hidden scroll-mt-24 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 backdrop-blur-md">
         <header className="relative border-b border-emerald-500/20 px-5 py-4">
           <h2 className="flex items-center gap-2 text-base font-semibold text-emerald-300">
             <Shield className="size-4" />
@@ -491,26 +516,16 @@ export default async function SettingsPage() {
           </PrivacyLine>
         </div>
       </section>
-    </div>
-  );
-}
 
-function SettingRow({
-  label,
-  value,
-  icon: Icon,
-}: {
-  label: string;
-  value: string;
-  icon?: typeof Moon;
-}) {
-  return (
-    <div className="flex items-center justify-between rounded-xl border border-white/5 bg-black/20 px-4 py-3 text-sm">
-      <div className="text-muted-foreground">{label}</div>
-      <div className="flex items-center gap-2 font-medium">
-        {Icon && <Icon className="size-4 text-violet-300" />}
-        {value}
-      </div>
+      {/* About / maintainer credit. Separate from the white-label
+          brand.* settings, which the user uses for THEIR client-
+          facing reports. This block is "who built the tool". */}
+      <section
+        id="about"
+        className="relative overflow-hidden scroll-mt-24 rounded-2xl"
+      >
+        <MaintainerCredit variant="block" />
+      </section>
     </div>
   );
 }

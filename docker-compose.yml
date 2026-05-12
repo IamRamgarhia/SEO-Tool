@@ -10,8 +10,11 @@ services:
       # is occupied). Container always serves on 3000.
       - "${SEO_HOST_PORT:-3000}:3000"
     environment:
-      # Persistent SQLite path inside the container — mapped to a volume
+      # All user state lives in /data (mounted volume): data.db,
+      # encryption key, port memory, screenshots. One backup target.
+      SEO_DATA_DIR: /data
       SEO_DB_PATH: /data/data.db
+      RUNNING_IN_DOCKER: "1"
       # Optional: bake in Google OAuth so users get one-click sign-in.
       # GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
       # GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}

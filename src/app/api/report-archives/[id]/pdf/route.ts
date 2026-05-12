@@ -2,17 +2,21 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { reportArchives } from "@/db/schema";
+import { guardAdminRequest } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 function safeFilename(name: string): string {
   return name.replace(/[^a-z0-9-_]+/gi, "-").replace(/^-+|-+$/g, "") || "report";
 }
 
 export async function GET(
-  _req: Request,
+  req: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
+  const denied = guardAdminRequest(req);
+  if (denied) return denied;
   const { id: idRaw } = await ctx.params;
   const id = Number(idRaw);
   if (!Number.isFinite(id))

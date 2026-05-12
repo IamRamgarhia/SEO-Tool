@@ -39,6 +39,8 @@ import {
   Flame,
   GitMerge,
   Magnet,
+  Megaphone,
+  Target,
   Video,
   Globe,
   ChevronDown,
@@ -60,6 +62,121 @@ type NavGroup = {
   /** Default-expanded if true; otherwise collapsed by default. */
   defaultOpen?: boolean;
   items: NavItem[];
+};
+
+/**
+ * Per-group accent. Pre-baked Tailwind class strings so the JIT picks
+ * them up — dynamic `text-${color}-300` would silently break.
+ *
+ * `icon` is the text color applied to each item's lucide icon.
+ * `iconActive` is the brighter shade used on the currently-active row.
+ * `dot` is the small marker shown beside a collapsed-group header when
+ * that group contains the active page.
+ * `borderLeft` is the 2px left-edge accent shown on the open-group
+ * container so the cluster reads as "you are inside this section".
+ */
+type GroupAccent = {
+  icon: string;
+  iconActive: string;
+  dot: string;
+  borderLeft: string;
+  openBg: string;
+};
+
+const NEUTRAL_ACCENT: GroupAccent = {
+  icon: "text-sidebar-foreground/55",
+  iconActive: "text-sidebar-accent-foreground",
+  dot: "bg-primary",
+  borderLeft: "border-l-2 border-l-primary/40",
+  openBg: "bg-sidebar-accent/30",
+};
+
+const GROUP_ACCENTS: Record<string, GroupAccent> = {
+  essentials: {
+    icon: "text-violet-300/70",
+    iconActive: "text-violet-200",
+    dot: "bg-violet-400",
+    borderLeft: "border-l-2 border-l-violet-500/40",
+    openBg: "bg-violet-500/[0.08]",
+  },
+  everyday: {
+    icon: "text-cyan-300/70",
+    iconActive: "text-cyan-200",
+    dot: "bg-cyan-400",
+    borderLeft: "border-l-2 border-l-cyan-500/40",
+    openBg: "bg-cyan-500/[0.08]",
+  },
+  content: {
+    icon: "text-violet-300/70",
+    iconActive: "text-violet-200",
+    dot: "bg-violet-400",
+    borderLeft: "border-l-2 border-l-violet-500/40",
+    openBg: "bg-violet-500/[0.06]",
+  },
+  keywords: {
+    icon: "text-cyan-300/70",
+    iconActive: "text-cyan-200",
+    dot: "bg-cyan-400",
+    borderLeft: "border-l-2 border-l-cyan-500/40",
+    openBg: "bg-cyan-500/[0.06]",
+  },
+  "paid-ads": {
+    icon: "text-rose-300/70",
+    iconActive: "text-rose-200",
+    dot: "bg-rose-400",
+    borderLeft: "border-l-2 border-l-rose-500/40",
+    openBg: "bg-rose-500/[0.06]",
+  },
+  backlinks: {
+    icon: "text-emerald-300/70",
+    iconActive: "text-emerald-200",
+    dot: "bg-emerald-400",
+    borderLeft: "border-l-2 border-l-emerald-500/40",
+    openBg: "bg-emerald-500/[0.06]",
+  },
+  local: {
+    icon: "text-amber-300/70",
+    iconActive: "text-amber-200",
+    dot: "bg-amber-400",
+    borderLeft: "border-l-2 border-l-amber-500/40",
+    openBg: "bg-amber-500/[0.06]",
+  },
+  competitors: {
+    icon: "text-cyan-300/70",
+    iconActive: "text-cyan-200",
+    dot: "bg-cyan-400",
+    borderLeft: "border-l-2 border-l-cyan-500/40",
+    openBg: "bg-cyan-500/[0.06]",
+  },
+  "ai-visibility": {
+    icon: "text-fuchsia-300/70",
+    iconActive: "text-fuchsia-200",
+    dot: "bg-fuchsia-400",
+    borderLeft: "border-l-2 border-l-fuchsia-500/40",
+    openBg: "bg-fuchsia-500/[0.06]",
+  },
+  monitoring: {
+    icon: "text-amber-300/70",
+    iconActive: "text-amber-200",
+    dot: "bg-amber-400",
+    borderLeft: "border-l-2 border-l-amber-500/40",
+    openBg: "bg-amber-500/[0.06]",
+  },
+  imports: {
+    icon: "text-emerald-300/70",
+    iconActive: "text-emerald-200",
+    dot: "bg-emerald-400",
+    borderLeft: "border-l-2 border-l-emerald-500/40",
+    openBg: "bg-emerald-500/[0.06]",
+  },
+  deliverables: {
+    icon: "text-cyan-300/70",
+    iconActive: "text-cyan-200",
+    dot: "bg-cyan-400",
+    borderLeft: "border-l-2 border-l-cyan-500/40",
+    openBg: "bg-cyan-500/[0.06]",
+  },
+  account: NEUTRAL_ACCENT,
 };
 
 /**
@@ -122,6 +239,24 @@ const groups: NavGroup[] = [
       { href: "/cannibalization", label: "Cannibalization", icon: GitMerge },
       { href: "/cwv", label: "Core Web Vitals", icon: Gauge },
       { href: "/serp-scans", label: "SERP scans archive", icon: Globe },
+    ],
+  },
+  {
+    id: "paid-ads",
+    title: "Paid ads",
+    defaultOpen: true,
+    items: [
+      // The ⭐ marks this as the newest / most-recommended entry —
+      // matches the same treatment on /tools and the per-client launcher.
+      {
+        href: "/tools/ads-funnel",
+        label: "Ad Funnel Architect ⭐",
+        icon: Megaphone,
+      },
+      // Forward-looking placeholders — the Meta + Google Ads + LinkedIn
+      // standalone dashboards aren't built yet, but the Ad Funnel
+      // generator covers their copy + strategy needs in the meantime.
+      { href: "/tools/branded-split", label: "Branded vs non-branded", icon: Target },
     ],
   },
   {
@@ -338,22 +473,11 @@ export function Sidebar({
         </div>
       )}
 
-      {/* Search row — shadcn-admin uses a faux-input button with a kbd hint */}
-      {!collapsed ? (
-        <div className="px-3 py-3">
-          <button
-            type="button"
-            onClick={openSearch}
-            className="inline-flex h-9 w-full items-center gap-2 rounded-md border border-input bg-background/40 px-3 text-sm text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
-          >
-            <Search className="size-4 shrink-0" />
-            <span className="flex-1 truncate text-left">Search…</span>
-            <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium sm:inline-flex">
-              ⌘K
-            </kbd>
-          </button>
-        </div>
-      ) : (
+      {/* Top-bar already owns the global search (cmd+K). When the
+          sidebar is collapsed we still expose a tiny search affordance
+          here so users in compact mode can launch the palette without
+          expanding the sidebar first. */}
+      {collapsed && (
         <div className="flex justify-center py-2">
           <button
             type="button"
@@ -378,15 +502,47 @@ export function Sidebar({
           const isOpen =
             group.pinned ||
             (openGroups[group.id] ?? group.defaultOpen ?? false);
+          // Group "contains the current page" — used to give the
+          // collapsed group header a subtle active indicator so the
+          // user can still see which section they're in without
+          // expanding it.
+          const hasActiveChild = group.items.some((it) =>
+            isActive(pathname, it.href),
+          );
+          const accent = GROUP_ACCENTS[group.id] ?? NEUTRAL_ACCENT;
           return (
-            <div key={group.id} className="mt-3 first:mt-1">
+            <div
+              key={group.id}
+              className={`mt-1.5 first:mt-0 ${
+                isOpen && !collapsed && !group.pinned
+                  ? `rounded-md pb-1 ${accent.openBg} ${accent.borderLeft}`
+                  : ""
+              }`}
+            >
               {!collapsed && !group.pinned && (
                 <button
                   type="button"
                   onClick={() => toggleGroup(group.id)}
-                  className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm font-semibold text-sidebar-foreground/60 transition-colors hover:text-sidebar-foreground"
+                  className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-[13px] font-semibold tracking-tight transition-colors ${
+                    isOpen
+                      ? "text-sidebar-foreground"
+                      : hasActiveChild
+                        ? "text-sidebar-foreground/85 hover:text-sidebar-foreground"
+                        : "text-sidebar-foreground/70 hover:text-sidebar-foreground"
+                  }`}
                 >
-                  <span>{group.title}</span>
+                  <span className="flex items-center gap-1.5">
+                    {/* Tiny dot when a group has the current page but
+                        is collapsed — surfaces "you're in here" without
+                        expanding the group. Color-keyed to the group
+                        so the user gets a quick "section identity" read. */}
+                    {hasActiveChild && !isOpen && (
+                      <span
+                        className={`size-1.5 shrink-0 rounded-full ${accent.dot}`}
+                      />
+                    )}
+                    {group.title}
+                  </span>
                   {isOpen ? (
                     <ChevronDown className="size-3.5 opacity-60" />
                   ) : (
@@ -395,7 +551,7 @@ export function Sidebar({
                 </button>
               )}
               {!collapsed && group.pinned && (
-                <div className="px-2 py-1.5 text-sm font-semibold text-sidebar-foreground/60">
+                <div className="px-2 py-1.5 text-[13px] font-semibold tracking-tight text-sidebar-foreground/75">
                   {group.title}
                 </div>
               )}
@@ -441,9 +597,14 @@ export function Sidebar({
                               }}
                             />
                           )}
+                          {/* Icon tinted by parent group accent —
+                              active rows brighten to the accent's
+                              "200" shade. Gives each section its own
+                              visual identity without changing the row
+                              chrome. */}
                           <Icon
-                            className={`relative z-10 shrink-0 size-3.5 ${
-                              active ? "text-foreground" : ""
+                            className={`relative z-10 shrink-0 size-3.5 transition-colors ${
+                              active ? accent.iconActive : accent.icon
                             }`}
                           />
                           {!collapsed && (

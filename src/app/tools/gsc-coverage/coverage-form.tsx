@@ -1,8 +1,13 @@
 "use client";
 
 import { useActionState } from "react";
-import { ListChecks, Loader2 } from "lucide-react";
-import { runCoverage, type CoverageState } from "./actions";
+import { ListChecks, Loader2, Sparkles, Wrench } from "lucide-react";
+import {
+  runCoverage,
+  analyzeFixesForCoverage,
+  type CoverageState,
+  type FixPlanState,
+} from "./actions";
 
 function tone(state: string | null): string {
   if (!state) return "bg-white/5 text-muted-foreground ring-white/10";
@@ -17,6 +22,12 @@ export function CoverageForm({ properties }: { properties: string[] }) {
     CoverageState | null,
     FormData
   >(runCoverage, null);
+
+  // Separate action — analyzes only what we already have, doesn't re-fetch.
+  const [fixState, fixAction, fixPending] = useActionState<
+    FixPlanState,
+    FormData
+  >(analyzeFixesForCoverage, null);
 
   return (
     <>
@@ -77,8 +88,36 @@ export function CoverageForm({ properties }: { properties: string[] }) {
       {state?.ok && (
         <>
           <section className="glass-apple relative overflow-hidden rounded-2xl p-5">
-            <h3 className="mb-3 text-sm font-semibold">Coverage summary</h3>
-            <div className="flex flex-wrap gap-2 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold">Coverage summary</h3>
+              {/* AI-fix CTA. Posts the rows JSON to the analyzer
+                  action; results render below. */}
+              <form action={fixAction}>
+                <input
+                  type="hidden"
+                  name="rows"
+                  value={JSON.stringify(state.rows)}
+                />
+                <button
+                  type="submit"
+                  disabled={fixPending}
+                  className="inline-flex h-9 items-center rounded-md bg-violet-500/15 px-3 text-xs font-medium text-violet-300 ring-1 ring-inset ring-violet-500/30 hover:bg-violet-500/25 disabled:opacity-50"
+                >
+                  {fixPending ? (
+                    <>
+                      <Loader2 className="mr-1.5 size-3 animate-spin" />
+                      Analyzing fixes…
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="mr-1.5 size-3" />
+                      AI: suggest fixes
+                    </>
+                  )}
+                </button>
+              </form>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2 text-xs">
               {Object.entries(state.summary)
                 .sort((a, b) => b[1] - a[1])
                 .map(([k, v]) => (
@@ -91,6 +130,67 @@ export function CoverageForm({ properties }: { properties: string[] }) {
                 ))}
             </div>
           </section>
+
+          {fixState && !fixState.ok && (
+            <p className="rounded-md bg-rose-500/10 px-3 py-2 text-xs text-rose-300 ring-1 ring-inset ring-rose-500/30">
+              {fixState.error}
+            </p>
+          )}
+
+          {fixState?.ok && fixState.items.length === 0 && (
+            <p className="rounded-md bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300 ring-1 ring-inset ring-emerald-500/30">
+              ✓ Everything you pasted is indexed cleanly. No fixes needed.
+            </p>
+          )}
+
+          {fixState?.ok && fixState.items.length > 0 && (
+            <section className="glass-apple relative overflow-hidden rounded-2xl">
+              <header className="border-b border-white/[0.06] px-5 py-3">
+                <h3 className="flex items-center gap-2 text-sm font-semibold">
+                  <Wrench className="size-3.5 text-violet-300" />
+                  AI fix plan ({fixState.items.length})
+                </h3>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  Per-URL diagnosis + concrete steps. Auto-apply hooks
+                  are surfaced where the WP bridge could do the change
+                  for you — wire up Settings → WordPress per client to
+                  enable them.
+                </p>
+              </header>
+              <ul className="divide-y divide-white/[0.04]">
+                {fixState.items.map((item, i) => (
+                  <li key={i} className="space-y-2 p-4">
+                    <a
+                      href={item.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block truncate font-mono text-[11px] text-muted-foreground hover:text-foreground"
+                    >
+                      {item.url}
+                    </a>
+                    <p className="text-sm">
+                      <span className="text-rose-300">Cause:</span>{" "}
+                      {item.cause}
+                    </p>
+                    {item.steps.length > 0 && (
+                      <ol className="ml-4 list-decimal space-y-0.5 text-xs text-foreground/85">
+                        {item.steps.map((s, j) => (
+                          <li key={j}>{s}</li>
+                        ))}
+                      </ol>
+                    )}
+                    {item.autoApply && (
+                      <p className="inline-flex items-center gap-1.5 rounded-md bg-cyan-500/10 px-2 py-1 text-[11px] text-cyan-300 ring-1 ring-inset ring-cyan-500/30">
+                        <Wrench className="size-3" />
+                        Auto-apply available:{" "}
+                        <code className="font-mono">{item.autoApply.kind}</code>
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           <section className="glass-apple relative overflow-hidden rounded-2xl">
             <header className="border-b border-white/[0.06] px-5 py-3">

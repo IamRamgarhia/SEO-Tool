@@ -263,3 +263,80 @@ export async function fetchGbpLocationSummary(opts: {
     reviewCount: null,
   };
 }
+
+
+
+/**
+ * Create a Google Business Profile local post. Used by the daily-
+ * automation publish step when a gbp_post queue item is approved.
+ *
+ * Endpoint: mybusiness.googleapis.com/v4/{locationName}/localPosts
+ * (the v4 API is still the only public surface for posts in 2026)
+ *
+ * `summary` is the post body, capped at 1500 chars by Google. The
+ * helper truncates rather than rejects.
+ */
+export async function createGbpLocalPost(opts: {
+  locationName: string;
+  summary: string;
+  callToAction?: {
+    actionType:
+      | "BOOK"
+      | "ORDER"
+      | "SHOP"
+      | "LEARN_MORE"
+      | "SIGN_UP"
+      | "CALL";
+    url?: string;
+  };
+  mediaUrl?: string;
+  clientIdScope?: number;
+}): Promise<
+  | { ok: true; postName: string; searchUrl: string | null }
+  | { ok: false; error: string }
+> {
+  const token = await getAccessToken(opts.clientIdScope);
+  const summary = opts.summary.slice(0, 1500);
+
+  const body: Record<string, unknown> = {
+    languageCode: "en-US",
+    summary,
+    topicType: "STANDARD",
+  };
+  if (opts.callToAction) {
+    body.callToAction = opts.callToAction;
+  }
+  if (opts.mediaUrl) {
+    body.media = [{ mediaFormat: "PHOTO", sourceUrl: opts.mediaUrl }];
+  }
+
+  const res = await fetch(
+    `https://mybusiness.googleapis.com/v4/${opts.locationName}/localPosts`,
+    {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(body),
+    },
+  );
+  if (res.status === 403) {
+    return {
+      ok: false,
+      error:
+        "GBP scope missing — reconnect Google with business.manage scope.",
+    };
+  }
+  if (!res.ok) {
+    const text = await res.text();
+    return { ok: false, error: text.slice(0, 300) || res.statusText };
+  }
+  type Resp = { name?: string; searchUrl?: string };
+  const data = (await res.json()) as Resp;
+  return {
+    ok: true,
+    postName: data.name ?? "",
+    searchUrl: data.searchUrl ?? null,
+  };
+}

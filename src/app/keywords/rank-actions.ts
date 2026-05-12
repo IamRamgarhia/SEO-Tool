@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { eq, inArray } from "drizzle-orm";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { dataDir } from "@/lib/data-dir";
 import { db } from "@/db/client";
 import {
   clients,
@@ -15,10 +16,11 @@ import { checkRank, shutdownBrowser } from "@/lib/rank-checker";
 import { notify } from "@/lib/notifier";
 
 function screenshotsRoot(): string {
-  return (
-    process.env.SEO_SCREENSHOTS_DIR ??
-    path.join(process.cwd(), "data", "screenshots")
-  );
+  if (process.env.SEO_SCREENSHOTS_DIR) return process.env.SEO_SCREENSHOTS_DIR;
+  // Co-located with the rest of the user's data (DB, encryption key) so
+  // a Docker volume backup or a "copy the install folder" backup is
+  // complete without needing a separate path.
+  return path.join(dataDir(), "screenshots");
 }
 
 export type CheckRankResult =

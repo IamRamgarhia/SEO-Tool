@@ -28,11 +28,42 @@
  */
 
 import crypto from "node:crypto";
-import { existsSync, readFileSync, writeFileSync, chmodSync } from "node:fs";
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  chmodSync,
+  mkdirSync,
+  copyFileSync,
+} from "node:fs";
 import path from "node:path";
+import { dataFile, dataDir } from "./data-dir";
 
 const PREFIX = "enc:v1:";
-const KEY_FILE = path.join(process.cwd(), ".seo-encryption-key");
+// dataFile() picks up a legacy key at process.cwd() if it exists, so
+// upgrading installs keep using their original key. New installs land
+// inside the data folder (which on Docker is the mounted volume).
+const KEY_FILE = dataFile(".seo-encryption-key");
+
+// One-time migration: if the resolved key file is still at the legacy
+// cwd location but a separate data dir is configured (e.g. Docker), copy
+// it to the canonical location so a container rebuild doesn't orphan it.
+(function migrateLegacyKey() {
+  try {
+    const canonical = path.join(dataDir(), ".seo-encryption-key");
+    if (KEY_FILE !== canonical && existsSync(KEY_FILE) && !existsSync(canonical)) {
+      mkdirSync(dataDir(), { recursive: true });
+      copyFileSync(KEY_FILE, canonical);
+      try {
+        chmodSync(canonical, 0o600);
+      } catch {
+        // Windows may not honor chmod
+      }
+    }
+  } catch {
+    // best-effort — silent
+  }
+})();
 
 let cachedKey: Buffer | null = null;
 let warnedMissing = false;
@@ -70,6 +101,11 @@ function loadOrCreateKey(): Buffer | null {
   // 3. Generate + persist
   try {
     const fresh = crypto.randomBytes(32);
+    try {
+      mkdirSync(dataDir(), { recursive: true });
+    } catch {
+      // ignore — usually exists
+    }
     writeFileSync(KEY_FILE, fresh.toString("base64"), { mode: 0o600 });
     try {
       chmodSync(KEY_FILE, 0o600);

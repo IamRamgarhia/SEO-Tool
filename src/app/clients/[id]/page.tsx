@@ -12,6 +12,7 @@ import {
   FileDown,
   Layers,
   Link2,
+  MoreHorizontal,
   Pencil,
   Play,
   RefreshCw,
@@ -25,9 +26,9 @@ import { db } from "@/db/client";
 import { audits, clients, keywords, tasks } from "@/db/schema";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { ScoreGauge } from "@/components/ui/score-gauge";
 import { SiteFavicon } from "@/components/ui/site-favicon";
 import { StatCard } from "@/components/ui/stat-card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { BrandingPreflightBanner } from "./branding-preflight-banner";
 import {
   applyNicheTemplates,
@@ -57,8 +58,9 @@ import {
   reportArchives,
   clientMetricSnapshots,
 } from "@/db/schema";
-import { ClientToolsLauncher } from "./client-tools-launcher";
+import { ClientToolsPanel } from "./client-tools-panel";
 import { DeleteClientButton } from "./delete-client-button";
+import { DailyAutomationCard } from "./daily-automation-card";
 import { inArray } from "drizzle-orm";
 import { headers } from "next/headers";
 import { Suspense } from "react";
@@ -80,6 +82,26 @@ const nicheTone: Record<string, string> = {
   services: "bg-rose-500/15 text-rose-300 ring-rose-500/20",
 };
 
+/**
+ * Compact relative-time formatter for the client hero — "2 hours ago",
+ * "5 days ago", "3 months ago". Defaults to "today" for anything under
+ * an hour so the copy reads naturally even right after a fresh audit.
+ */
+function relativeTime(date: Date): string {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (seconds < 60 * 60) return "today";
+  const hours = Math.floor(seconds / 3600);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 14) return `${days} day${days === 1 ? "" : "s"} ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 9) return `${weeks} week${weeks === 1 ? "" : "s"} ago`;
+  const months = Math.floor(days / 30);
+  if (months < 18) return `${months} month${months === 1 ? "" : "s"} ago`;
+  const years = Math.floor(days / 365);
+  return `${years} year${years === 1 ? "" : "s"} ago`;
+}
+
 function PanelSkeleton({ title }: { title: string }) {
   return (
     <section className="glass-apple relative overflow-hidden rounded-2xl">
@@ -87,9 +109,9 @@ function PanelSkeleton({ title }: { title: string }) {
         <div className="text-sm text-muted-foreground">{title}</div>
       </header>
       <div className="space-y-2 p-5">
-        <div className="h-4 w-3/4 animate-pulse rounded bg-white/5" />
-        <div className="h-4 w-1/2 animate-pulse rounded bg-white/5" />
-        <div className="h-4 w-2/3 animate-pulse rounded bg-white/5" />
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-4 w-1/2" />
+        <Skeleton className="h-4 w-2/3" />
       </div>
     </section>
   );
@@ -165,6 +187,32 @@ export default async function ClientDetailPage({
     .select({ value: count() })
     .from(keywords)
     .where(eq(keywords.clientId, clientId));
+
+  // Last ~8 snapshots, oldest-first, feed the StatCard sparklines.
+  // criticalIssues + highIssues are summed for the issues spark; the
+  // keywordCount column is reused directly. Open-task sparklines are
+  // skipped here because the snapshot table doesn't track them — the
+  // hint copy carries that read instead.
+  const recentSnapshots = await db
+    .select({
+      criticalIssues: clientMetricSnapshots.criticalIssues,
+      highIssues: clientMetricSnapshots.highIssues,
+      keywordCount: clientMetricSnapshots.keywordCount,
+      capturedAt: clientMetricSnapshots.capturedAt,
+    })
+    .from(clientMetricSnapshots)
+    .where(eq(clientMetricSnapshots.clientId, clientId))
+    .orderBy(desc(clientMetricSnapshots.capturedAt))
+    .limit(8);
+  const orderedSnapshots = recentSnapshots.slice().reverse();
+  const issuesSpark = orderedSnapshots
+    .map(
+      (s) =>
+        (s.criticalIssues ?? 0) + (s.highIssues ?? 0),
+    );
+  const keywordsSpark = orderedSnapshots
+    .map((s) => s.keywordCount)
+    .filter((v): v is number => v !== null);
 
   // Counts shown in the delete-confirmation dialog so the user sees
   // exactly what they're about to wipe.
@@ -248,274 +296,574 @@ export default async function ClientDetailPage({
     .limit(1);
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <div className="space-y-6">
       {brandingNeeded && (
         <BrandingPreflightBanner
           clientId={clientId}
           template={brandingTemplate}
         />
       )}
-      {/* HERO — shadcn-admin style: flat card, real favicon, no orbs */}
-      <section className="rounded-xl border border-border bg-card p-6 shadow">
-        <nav className="flex items-center gap-1 text-xs text-muted-foreground">
-          <Link
-            href="/clients"
-            className="rounded px-1 py-0.5 transition-colors hover:text-foreground"
-          >
-            Clients
-          </Link>
-          <span className="text-muted-foreground/60">/</span>
-          <span className="text-foreground">{client.name}</span>
-        </nav>
 
-        <div className="mt-4 grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <SiteFavicon url={client.url} name={client.name} size={48} />
-              <div className="space-y-1">
-                <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
+      {/*
+        Two-column layout on desktop:
+          left   — sticky tools sidebar (per-client, all tools pre-wired)
+          right  — the main client content (hero, stats, automations,
+                   integrations, recent activity, etc.)
+
+        Below md the sidebar collapses to a button + sheet so the main
+        content gets full width.
+      */}
+      <div className="flex flex-col gap-6 md:flex-row md:items-start">
+        <ClientToolsPanel
+          client={{
+            id: client.id,
+            url: client.url,
+            gscProperty: client.gscProperty,
+            gbpUrl: client.gbpUrl,
+            ga4PropertyId: client.ga4PropertyId,
+            wpEndpoint: client.wpEndpoint,
+          }}
+        />
+
+        <div className="min-w-0 flex-1 space-y-6">
+      {/*
+        HERO — editorial composition.
+        Top accent rule colored by score band gives the card a magazine-masthead
+        feel. Left column owns identity; right column makes the score the
+        unambiguous focal point with a tabular display number + horizontal
+        strength bar.
+        Action row collapses 10 buttons into a hero CTA + 4 primaries + a
+        "More" overflow so the visual weight reads as decisive, not busy.
+      */}
+      {(() => {
+        const score = latestCompleted?.score ?? null;
+        const tone: "muted" | "emerald" | "amber" | "rose" =
+          score === null
+            ? "muted"
+            : score >= 75
+              ? "emerald"
+              : score >= 50
+                ? "amber"
+                : "rose";
+        const toneClasses = {
+          muted: {
+            number: "text-muted-foreground",
+            bar: "bg-muted-foreground/30",
+            stripe: "from-transparent via-border to-transparent",
+            ringFavicon: "ring-border",
+            chipLabel: "text-muted-foreground",
+            chipBg: "bg-muted/40 ring-border",
+          },
+          emerald: {
+            number: "text-emerald-300",
+            bar: "bg-emerald-400",
+            stripe: "from-emerald-500/0 via-emerald-400/70 to-emerald-500/0",
+            ringFavicon: "ring-emerald-500/40",
+            chipLabel: "text-emerald-300",
+            chipBg: "bg-emerald-500/10 ring-emerald-500/30",
+          },
+          amber: {
+            number: "text-amber-300",
+            bar: "bg-amber-400",
+            stripe: "from-amber-500/0 via-amber-400/70 to-amber-500/0",
+            ringFavicon: "ring-amber-500/40",
+            chipLabel: "text-amber-300",
+            chipBg: "bg-amber-500/10 ring-amber-500/30",
+          },
+          rose: {
+            number: "text-rose-300",
+            bar: "bg-rose-400",
+            stripe: "from-rose-500/0 via-rose-400/70 to-rose-500/0",
+            ringFavicon: "ring-rose-500/40",
+            chipLabel: "text-rose-300",
+            chipBg: "bg-rose-500/10 ring-rose-500/30",
+          },
+        }[tone];
+        const auditedLabel = latestCompleted?.completedAt
+          ? relativeTime(latestCompleted.completedAt)
+          : null;
+        const auditedDateFull = latestCompleted?.completedAt
+          ? latestCompleted.completedAt.toLocaleDateString(undefined, {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })
+          : null;
+        const barFill = score === null ? 0 : Math.max(2, Math.min(100, score));
+
+        return (
+          <section className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-xl">
+            {/* Score-colored masthead stripe */}
+            <div
+              aria-hidden
+              className={`h-px w-full bg-gradient-to-r ${toneClasses.stripe}`}
+            />
+
+            <div className="p-6 sm:p-8">
+              {/* Breadcrumb — editorial micro caps */}
+              <nav
+                aria-label="Breadcrumb"
+                className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+              >
+                <Link
+                  href="/clients"
+                  className="rounded-sm transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+                >
+                  Clients
+                </Link>
+                <span aria-hidden className="text-muted-foreground/40">·</span>
+                <span aria-current="page" className="truncate text-foreground/80">
                   {client.name}
-                </h1>
-                <a
-                  href={client.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground hover:underline"
+                </span>
+              </nav>
+
+              {/* Headline grid */}
+              <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+                {/* LEFT — identity */}
+                <div className="min-w-0 space-y-5">
+                  <div className="flex items-start gap-4">
+                    <span
+                      className={`shrink-0 rounded-2xl ring-2 ring-offset-2 ring-offset-card transition-colors ${toneClasses.ringFavicon}`}
+                    >
+                      <SiteFavicon
+                        url={client.url}
+                        name={client.name}
+                        size={56}
+                      />
+                    </span>
+                    <div className="min-w-0 space-y-2">
+                      <h1 className="break-words text-[2.25rem] font-bold leading-[1.02] tracking-tight text-foreground sm:text-[2.75rem] lg:text-5xl">
+                        {client.name}
+                      </h1>
+                      <a
+                        href={client.url}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        aria-label={`${client.url} — opens in a new tab`}
+                        className="group inline-flex max-w-full items-center gap-1.5 rounded-md bg-muted/40 px-2 py-1 font-mono text-[12px] text-muted-foreground ring-1 ring-inset ring-border transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+                      >
+                        <span className="truncate">
+                          {client.url.replace(/^https?:\/\//, "")}
+                        </span>
+                        <ExternalLink
+                          aria-hidden
+                          className="size-3 shrink-0 opacity-60 group-hover:opacity-100"
+                        />
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Metadata strip */}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
+                    {client.niche && (
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium ring-1 ring-inset ${nicheTone[client.niche] ?? "bg-muted text-muted-foreground"}`}
+                      >
+                        <Sparkles className="size-3" />
+                        {nicheLabels[client.niche] ?? client.niche}
+                      </span>
+                    )}
+                    {client.techStack && client.techStack.length > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-muted/60 px-2.5 py-0.5 text-[11px] text-muted-foreground ring-1 ring-inset ring-border">
+                        <Layers className="size-3" />
+                        {client.techStack.length} tech
+                        {client.techStack.length === 1 ? "" : "s"} detected
+                      </span>
+                    )}
+                    {auditedLabel && latestCompleted?.completedAt && (
+                      <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                        <span
+                          aria-hidden
+                          className="size-1 rounded-full bg-muted-foreground/50"
+                        />
+                        <span>
+                          Audited{" "}
+                          <time
+                            dateTime={latestCompleted.completedAt.toISOString()}
+                          >
+                            {auditedLabel}
+                          </time>
+                        </span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* RIGHT — score panel.
+                    Wrapped in <dl> so the caption / number / sub-metadata
+                    relate semantically — screen readers announce as
+                    "Health score: 32 out of 100. 13 issues found. May 12,
+                    2026." */}
+                <dl
+                  className="relative lg:border-l lg:border-border lg:pl-8"
+                  aria-label="Latest audit summary"
                 >
-                  {client.url.replace(/^https?:\/\//, "")}
-                  <ExternalLink className="size-3" />
-                </a>
+                  <dt className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                    Health score
+                  </dt>
+                  <dd className="mt-2 flex items-baseline gap-2">
+                    <span
+                      className={`font-bold tabular-nums leading-none ${toneClasses.number}`}
+                      style={{ fontSize: "clamp(4rem, 6vw, 5.5rem)" }}
+                      aria-label={
+                        score === null
+                          ? "No score yet"
+                          : `${score} out of 100`
+                      }
+                    >
+                      {score === null ? "—" : score}
+                    </span>
+                    <span
+                      aria-hidden
+                      className="text-xl font-medium text-muted-foreground/60"
+                    >
+                      /100
+                    </span>
+                  </dd>
+                  {/* Strength bar — decorative; the numeric label above
+                      already carries the semantic value. Animation guarded
+                      by motion-safe so prefers-reduced-motion users get an
+                      instant fill. */}
+                  <dd
+                    aria-hidden
+                    className="mt-4 h-1 w-full overflow-hidden rounded-full bg-muted/40"
+                  >
+                    <div
+                      className={`h-full rounded-full motion-safe:transition-[width] motion-safe:duration-700 ${toneClasses.bar}`}
+                      style={{ width: `${barFill}%` }}
+                    />
+                  </dd>
+                  <dd className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+                    {latestCompleted ? (
+                      <>
+                        <span className="font-medium text-foreground/80 tabular-nums">
+                          {latestCompleted.issuesCount}
+                        </span>
+                        <span>issues found</span>
+                        <span aria-hidden className="text-muted-foreground/40">
+                          ·
+                        </span>
+                        {latestCompleted.completedAt && (
+                          <time
+                            dateTime={latestCompleted.completedAt.toISOString()}
+                          >
+                            {auditedDateFull}
+                          </time>
+                        )}
+                      </>
+                    ) : (
+                      <span>
+                        Run an audit to score this site — takes ~30 seconds.
+                      </span>
+                    )}
+                  </dd>
+                </dl>
+              </div>
+
+              {/* Hairline + action row */}
+              <div className="mt-7 border-t border-border pt-5">
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* HERO action — Run audit */}
+                  <form action={runAction}>
+                    <SubmitButton
+                      icon={<Play className="size-3.5" />}
+                      pendingChildren="Running audit…"
+                      pendingToast="Starting audit"
+                      pendingToastDescription="Crawling the site and running 30+ checks. Takes ~30-60 s."
+                    >
+                      Run audit
+                    </SubmitButton>
+                  </form>
+
+                  {/* Generate report dropdown */}
+                  <details className="group/rep relative">
+                    <summary
+                      className={buttonVariants({
+                        variant: "outline",
+                        className:
+                          "list-none cursor-pointer [&::-webkit-details-marker]:hidden",
+                      })}
+                    >
+                      <FileDown className="size-3.5" />
+                      Generate report
+                    </summary>
+                    <div className="absolute left-0 top-full z-20 mt-1 w-60 overflow-hidden rounded-lg border border-border bg-popover shadow-xl">
+                      <Link
+                        href={`/reports/${client.id}?template=executive`}
+                        className="block px-3 py-2 text-sm hover:bg-accent"
+                      >
+                        <div className="font-medium">Executive</div>
+                        <div className="text-[11px] text-muted-foreground">
+                          Score, summary, top issues — 1 page
+                        </div>
+                      </Link>
+                      <Link
+                        href={`/reports/${client.id}?template=detailed`}
+                        className="block border-t border-border px-3 py-2 text-sm hover:bg-accent"
+                      >
+                        <div className="font-medium">Detailed</div>
+                        <div className="text-[11px] text-muted-foreground">
+                          Full report — work done + next steps
+                        </div>
+                      </Link>
+                      <Link
+                        href={`/reports/${client.id}?template=technical`}
+                        className="block border-t border-border px-3 py-2 text-sm hover:bg-accent"
+                      >
+                        <div className="font-medium">Technical</div>
+                        <div className="text-[11px] text-muted-foreground">
+                          Every issue + URLs — engineering
+                        </div>
+                      </Link>
+                    </div>
+                  </details>
+
+                  {/* Primary AI surface */}
+                  <Link
+                    href={`/clients/${client.id}/ai-audit`}
+                    className={buttonVariants({
+                      variant: "outline",
+                      className: "border-violet-500/30 bg-violet-500/10",
+                    })}
+                  >
+                    <Bot className="size-3.5" />
+                    AI audit
+                  </Link>
+
+                  {/* Onboarding — emphasised when not completed */}
+                  <Link
+                    href={`/clients/${client.id}/onboarding`}
+                    className={buttonVariants({
+                      variant: "outline",
+                      className:
+                        client.onboardingStep === "completed"
+                          ? ""
+                          : "border-violet-500/40 bg-violet-500/10 text-violet-200",
+                    })}
+                    title={
+                      client.onboardingStep === "completed"
+                        ? "Re-run onboarding to refresh keywords + plan"
+                        : "Smart onboarding — auto-generates a 30-day plan"
+                    }
+                  >
+                    <Sparkles className="size-3.5" />
+                    {client.onboardingStep === "completed"
+                      ? "Re-plan"
+                      : "Smart onboarding"}
+                  </Link>
+
+                  {/* Overflow — everything else */}
+                  <details className="group/more relative ml-auto">
+                    <summary
+                      className={buttonVariants({
+                        variant: "outline",
+                        className:
+                          "list-none cursor-pointer [&::-webkit-details-marker]:hidden",
+                      })}
+                    >
+                      <MoreHorizontal className="size-3.5" />
+                      More
+                    </summary>
+                    <div className="absolute right-0 top-full z-20 mt-1 w-56 overflow-hidden rounded-lg border border-border bg-popover shadow-xl">
+                      <Link
+                        href={`/agent/c/${client.id}`}
+                        className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent"
+                      >
+                        <Bot className="size-3.5 text-violet-300" />
+                        AI agent
+                      </Link>
+                      <Link
+                        href={`/blog/${client.id}`}
+                        className="flex items-center gap-2 border-t border-border px-3 py-2 text-sm hover:bg-accent"
+                      >
+                        <Wand2 className="size-3.5 text-violet-300" />
+                        AI blog
+                      </Link>
+                      <Link
+                        href={`/guest-posts/c/${client.id}`}
+                        className="flex items-center gap-2 border-t border-border px-3 py-2 text-sm hover:bg-accent"
+                      >
+                        <Wand2 className="size-3.5 text-amber-300" />
+                        Guest posts
+                      </Link>
+                      <Link
+                        href={`/link-building/c/${client.id}`}
+                        className="flex items-center gap-2 border-t border-border px-3 py-2 text-sm hover:bg-accent"
+                      >
+                        <Link2 className="size-3.5 text-emerald-300" />
+                        Backlinks
+                      </Link>
+                      <Link
+                        href={`/clients/${client.id}/edit`}
+                        className="flex items-center gap-2 border-t border-border px-3 py-2 text-sm hover:bg-accent"
+                      >
+                        <Pencil className="size-3.5 text-muted-foreground" />
+                        Edit client
+                      </Link>
+                      <form
+                        action={refreshMetadataAction}
+                        className="border-t border-border"
+                      >
+                        <SubmitButton
+                          variant="ghost"
+                          icon={
+                            <RefreshCw className="size-3.5 text-muted-foreground" />
+                          }
+                          pendingChildren="Refreshing…"
+                          pendingToast="Refreshing site metadata"
+                          pendingToastDescription="Re-fetching logo, NAP, tech stack…"
+                          title="Re-fetch logo, address, social links, and tech stack from the live site"
+                          className="w-full justify-start rounded-none px-3 py-2 text-sm font-normal hover:bg-accent"
+                        >
+                          Refresh metadata
+                        </SubmitButton>
+                      </form>
+                    </div>
+                  </details>
+                </div>
               </div>
             </div>
+          </section>
+        );
+      })()}
 
-            <div className="flex flex-wrap items-center gap-2">
-              {client.niche && (
-                <span
-                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${nicheTone[client.niche] ?? "bg-muted text-muted-foreground"}`}
-                >
-                  <Sparkles className="size-3" />
-                  {nicheLabels[client.niche] ?? client.niche}
-                </span>
-              )}
-              {client.techStack && client.techStack.length > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">
-                  <Layers className="size-3" />
-                  {client.techStack.length} techs detected
-                </span>
-              )}
-            </div>
+      {/* STATS — or inviting empty-state when this client has no data yet */}
+      {latestCompleted || keywordCount > 0 || openTaskCount > 0 ? (
+        (() => {
+          // Snapshot-driven deltas. We compare the latest snapshot's
+          // value to the snapshot from ~7 days ago (or the oldest we
+          // have if there aren't enough). Only shown when both ends
+          // exist so we don't fabricate movement.
+          const lastIdx = orderedSnapshots.length - 1;
+          const baseIdx = Math.max(0, lastIdx - 6);
+          const issuesDelta =
+            lastIdx > baseIdx && issuesSpark.length >= 2
+              ? issuesSpark[issuesSpark.length - 1] - issuesSpark[baseIdx]
+              : null;
+          const kwDelta =
+            lastIdx > baseIdx && keywordsSpark.length >= 2
+              ? keywordsSpark[keywordsSpark.length - 1] -
+                keywordsSpark[baseIdx]
+              : null;
 
-            <div className="flex flex-wrap items-center gap-2 pt-2">
-              <form action={runAction}>
-                <SubmitButton
-                  icon={<Play className="size-3.5" />}
-                  pendingChildren="Running audit…"
-                  pendingToast="Starting audit"
-                  pendingToastDescription="Crawling the site and running 30+ checks. Takes ~30-60 s."
-                >
-                  Run audit
-                </SubmitButton>
-              </form>
-              <details className="group/rep relative">
-                <summary
-                  className={buttonVariants({
-                    variant: "outline",
-                    className:
-                      "list-none cursor-pointer [&::-webkit-details-marker]:hidden",
-                  })}
-                >
-                  <FileDown className="size-3.5" />
-                  Generate report
-                </summary>
-                <div className="absolute right-0 top-full z-20 mt-1 w-60 overflow-hidden rounded-lg border border-border bg-popover shadow-xl">
-                  <Link
-                    href={`/reports/${client.id}?template=executive`}
-                    className="block px-3 py-2 text-sm hover:bg-accent"
-                  >
-                    <div className="font-medium">Executive</div>
-                    <div className="text-[11px] text-muted-foreground">
-                      Score, summary, top issues — 1 page
-                    </div>
-                  </Link>
-                  <Link
-                    href={`/reports/${client.id}?template=detailed`}
-                    className="block border-t border-border px-3 py-2 text-sm hover:bg-accent"
-                  >
-                    <div className="font-medium">Detailed</div>
-                    <div className="text-[11px] text-muted-foreground">
-                      Full report — work done + next steps
-                    </div>
-                  </Link>
-                  <Link
-                    href={`/reports/${client.id}?template=technical`}
-                    className="block border-t border-border px-3 py-2 text-sm hover:bg-accent"
-                  >
-                    <div className="font-medium">Technical</div>
-                    <div className="text-[11px] text-muted-foreground">
-                      Every issue + URLs — engineering
-                    </div>
-                  </Link>
-                </div>
-              </details>
-              <Link
-                href={`/clients/${client.id}/ai-audit`}
-                className={buttonVariants({
-                  variant: "outline",
-                  className: "border-violet-500/30 bg-violet-500/10",
-                })}
-              >
-                <Bot className="size-3.5" />
-                AI audit
-              </Link>
-              <Link
-                href={`/agent/c/${client.id}`}
-                className={buttonVariants({
-                  variant: "outline",
-                  className: "border-violet-500/30 bg-violet-500/10",
-                })}
-              >
-                <Bot className="size-3.5" />
-                AI agent
-              </Link>
-              <Link
-                href={`/blog/${client.id}`}
-                className={buttonVariants({
-                  variant: "outline",
-                  className: "border-violet-500/30 bg-violet-500/10",
-                })}
-              >
-                <Wand2 className="size-3.5" />
-                AI blog
-              </Link>
-              <Link
-                href={`/link-building/c/${client.id}`}
-                className={buttonVariants({
-                  variant: "outline",
-                  className: "border-emerald-500/30 bg-emerald-500/10",
-                })}
-                title="AI-matched backlink prospects + tracker for this client"
-              >
-                <Link2 className="size-3.5" />
-                Backlinks
-              </Link>
-              <Link
-                href={`/guest-posts/c/${client.id}`}
-                className={buttonVariants({
-                  variant: "outline",
-                  className: "border-amber-500/30 bg-amber-500/10",
-                })}
-                title="AI guest post composer tuned per platform"
-              >
-                <Wand2 className="size-3.5" />
-                Guest posts
-              </Link>
-              <Link
-                href={`/clients/${client.id}/onboarding`}
-                className={buttonVariants({
-                  variant: "outline",
-                  className:
-                    client.onboardingStep === "completed"
-                      ? ""
-                      : "border-violet-500/40 bg-violet-500/10 text-violet-200",
-                })}
-                title={
-                  client.onboardingStep === "completed"
-                    ? "Re-run onboarding to refresh keywords + plan"
-                    : "Smart onboarding — auto-generates a 30-day plan"
+          return (
+            <div className="grid gap-4 sm:grid-cols-3">
+              <StatCard
+                label="Open issues"
+                value={latestCompleted?.issuesCount ?? 0}
+                accent="amber"
+                icon={AlertCircle}
+                hint="From last audit"
+                spark={issuesSpark.length >= 2 ? issuesSpark : undefined}
+                delta={
+                  issuesDelta !== null
+                    ? { value: issuesDelta, label: "vs prior" }
+                    : undefined
                 }
-              >
-                <Sparkles className="size-3.5" />
-                {client.onboardingStep === "completed"
-                  ? "Re-plan"
-                  : "Smart onboarding"}
-              </Link>
-              <Link
-                href={`/clients/${client.id}/edit`}
-                className={buttonVariants({
-                  variant: "outline",
-                  className: "border-white/10 bg-white/5",
-                })}
-              >
-                <Pencil className="size-3.5" />
-                Edit
-              </Link>
-              <form action={refreshMetadataAction}>
-                <SubmitButton
-                  variant="outline"
-                  icon={<RefreshCw className="size-3.5" />}
-                  pendingChildren="Refreshing…"
-                  pendingToast="Refreshing site metadata"
-                  pendingToastDescription="Re-fetching logo, NAP, tech stack…"
-                  title="Re-fetch logo, address, social links, and tech stack from the live site"
-                >
-                  Refresh
-                </SubmitButton>
-              </form>
+              />
+              <StatCard
+                label="Open tasks"
+                value={openTaskCount}
+                accent="violet"
+                icon={ClipboardList}
+                hint="Auto-generated + manual"
+              />
+              <StatCard
+                label="Tracked keywords"
+                value={keywordCount}
+                accent="cyan"
+                icon={Search}
+                hint={
+                  keywordCount === 0 ? "Not tracking any yet" : "In rotation"
+                }
+                spark={keywordsSpark.length >= 2 ? keywordsSpark : undefined}
+                delta={
+                  kwDelta !== null
+                    ? { value: kwDelta, label: "vs prior" }
+                    : undefined
+                }
+              />
             </div>
-          </div>
-
-          {/* Score gauge in hero */}
-          <div className="flex items-center gap-4 rounded-lg border border-border bg-muted/30 p-4">
-            <ScoreGauge score={latestCompleted?.score ?? null} size={120} />
-            <div className="space-y-1">
-              <div className="text-xs font-medium text-muted-foreground">
-                Latest audit
-              </div>
-              {latestCompleted ? (
-                <>
-                  <div className="text-sm font-medium text-foreground">
-                    {latestCompleted.completedAt?.toLocaleDateString() ?? "—"}
+          );
+        })()
+      ) : (
+        <section className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-cyan-500/[0.04] via-violet-500/[0.03] to-transparent p-6">
+          <div className="pointer-events-none absolute -right-10 -top-10 size-40 rounded-full bg-cyan-500/10 blur-3xl" />
+          <header className="relative">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-300">
+              Get started
+            </p>
+            <h2 className="mt-2 text-xl font-semibold">
+              No data for {client.name} yet — let&apos;s seed it.
+            </h2>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              Pick any of the three to bootstrap this client. You can do them
+              in any order, and the AI agent will start filling in the rest
+              within 24h.
+            </p>
+          </header>
+          <div className="relative mt-5 grid gap-3 sm:grid-cols-3">
+            <form action={runAction} className="contents">
+              <button
+                type="submit"
+                className="group flex flex-col items-start gap-2 rounded-xl border border-cyan-500/30 bg-cyan-500/[0.06] p-4 text-left transition-colors hover:bg-cyan-500/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                <span className="grid size-8 place-items-center rounded-lg bg-cyan-500/15 text-cyan-300 ring-1 ring-inset ring-cyan-500/30">
+                  <Play className="size-4" />
+                </span>
+                <div>
+                  <div className="text-sm font-semibold">Run an audit</div>
+                  <div className="mt-0.5 text-[11px] text-muted-foreground">
+                    30+ SEO checks. ~60 seconds. Sets the baseline health
+                    score.
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {latestCompleted.issuesCount} issues found
-                  </div>
-                </>
-              ) : (
-                <div className="text-xs text-muted-foreground">
-                  Click Run audit to score this site
                 </div>
-              )}
-            </div>
+                <span className="mt-1 text-[11px] font-medium text-cyan-300 transition-transform group-hover:translate-x-0.5">
+                  Run now →
+                </span>
+              </button>
+            </form>
+            <Link
+              href={`/keywords?clientId=${client.id}`}
+              className="group flex flex-col items-start gap-2 rounded-xl border border-violet-500/30 bg-violet-500/[0.04] p-4 transition-colors hover:bg-violet-500/[0.10]"
+            >
+              <span className="grid size-8 place-items-center rounded-lg bg-violet-500/15 text-violet-300 ring-1 ring-inset ring-violet-500/30">
+                <Search className="size-4" />
+              </span>
+              <div>
+                <div className="text-sm font-semibold">Track keywords</div>
+                <div className="mt-0.5 text-[11px] text-muted-foreground">
+                  10-15 keywords gives the AI enough signal to spot quick
+                  wins.
+                </div>
+              </div>
+              <span className="mt-1 text-[11px] font-medium text-violet-300 transition-transform group-hover:translate-x-0.5">
+                Add keywords →
+              </span>
+            </Link>
+            <Link
+              href={`/clients/${client.id}/onboarding`}
+              className="group flex flex-col items-start gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.04] p-4 transition-colors hover:bg-emerald-500/[0.10]"
+            >
+              <span className="grid size-8 place-items-center rounded-lg bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30">
+                <Sparkles className="size-4" />
+              </span>
+              <div>
+                <div className="text-sm font-semibold">Smart onboarding</div>
+                <div className="mt-0.5 text-[11px] text-muted-foreground">
+                  AI inspects the site and auto-generates a 30-day SEO plan.
+                </div>
+              </div>
+              <span className="mt-1 text-[11px] font-medium text-emerald-300 transition-transform group-hover:translate-x-0.5">
+                Auto-plan →
+              </span>
+            </Link>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
-      {/* STATS — same StatCard component as dashboard for consistency */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard
-          label="Open issues"
-          value={latestCompleted?.issuesCount ?? 0}
-          accent="amber"
-          icon={AlertCircle}
-          hint="From last audit"
-        />
-        <StatCard
-          label="Open tasks"
-          value={openTaskCount}
-          accent="violet"
-          icon={ClipboardList}
-          hint="Auto-generated + manual"
-        />
-        <StatCard
-          label="Tracked keywords"
-          value={keywordCount}
-          accent="cyan"
-          icon={Search}
-          hint={keywordCount === 0 ? "Not tracking any yet" : "In rotation"}
-        />
-      </div>
-
-      {/* TOOLS LAUNCHER — everything pre-wired with this client's URL / id / OAuth */}
-      <ClientToolsLauncher
-        client={{
-          id: client.id,
-          url: client.url,
-          gscProperty: client.gscProperty,
-          gbpUrl: client.gbpUrl,
-          ga4PropertyId: client.ga4PropertyId,
-          wpEndpoint: client.wpEndpoint,
-        }}
-      />
+      {/* DAILY AUTOMATION ENTRY — schedules + queue, per client */}
+      <DailyAutomationCard clientId={client.id} />
 
       {/* GOOGLE INTEGRATION */}
       <section className="relative overflow-hidden rounded-2xl border border-white/5 bg-card/40 backdrop-blur-md">
@@ -854,6 +1202,8 @@ export default async function ClientDetailPage({
           />
         </div>
       </section>
+        </div>
+      </div>
     </div>
   );
 }
