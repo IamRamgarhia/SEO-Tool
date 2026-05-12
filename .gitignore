@@ -92,3 +92,8 @@ dump.rdb
 # Per-user tool config (Claude Code, scheduled-task locks, etc.)
 # ─────────────────────────────────────────────────────────────────────
 .claude/
+
+# Internal project plan / Claude Code context — strategy, decision log,
+# competitive analysis, pricing notes, validation outreach. Kept locally
+# for the maintainer + Claude Code to reference; never committed.
+CLAUDE.md
